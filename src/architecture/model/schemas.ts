@@ -412,6 +412,7 @@ export const activityEntrySchema: z.ZodType<ActivityEntry> = z
       'component.unlocked',
       'component.moved',
       'connection.created',
+      'connection.updated',
       'connection.removed',
       'constraints.updated',
       'history.undo',

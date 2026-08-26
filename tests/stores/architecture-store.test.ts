@@ -103,6 +103,17 @@ describe('architecture store mutations', () => {
     });
     expect(edgeId).toBe('ecs-to-queue');
 
+    const updatedEdge = store.getState().updateConnection(edgeId, {
+      type: 'data',
+      protocol: 'HTTPS',
+      encrypted: false,
+    });
+    expect(updatedEdge).toMatchObject({
+      type: 'data',
+      protocol: 'HTTPS',
+      encrypted: false,
+    });
+
     store.getState().removeComponent(queue.id);
     expect(
       store

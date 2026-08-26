@@ -1,6 +1,6 @@
 import { Cloud, ShieldCheck } from 'lucide-react';
 
-import { useArchitectureStore } from '../../stores/architecture-store';
+import { useIntelligenceStore } from '../../stores/intelligence-store';
 import { WebMcpStatus } from '../agent/WebMcpStatus';
 
 type StatusMetricProps = {
@@ -24,12 +24,11 @@ function StatusMetric({ label, value, detail }: StatusMetricProps) {
 }
 
 export function StatusBar() {
-  const estimatedMonthlyCost = useArchitectureStore((state) =>
-    state.architecture.components.reduce(
-      (total, component) => total + component.estimatedMonthlyCost,
-      0,
-    ),
-  );
+  const analysis = useIntelligenceStore((state) => state.analysis);
+  const analysisStale = useIntelligenceStore((state) => state.analysisStale);
+
+  const cost = analysis?.estimatedMonthlyCost;
+  const metricDetail = analysisStale ? 'stale — rerun analysis' : '/ 100';
 
   return (
     <footer
@@ -37,12 +36,22 @@ export function StatusBar() {
       aria-label="Architecture status"
     >
       <StatusMetric
-        label="Estimated cost"
-        value={`$${estimatedMonthlyCost.toLocaleString('en-US')}`}
-        detail="/ month baseline"
+        label="Estimated architecture cost"
+        value={cost === undefined ? '—' : `$${cost.toLocaleString('en-US')}`}
+        detail={
+          analysisStale ? 'stale planning estimate' : 'planning — not AWS quote'
+        }
       />
-      <StatusMetric label="Resilience" value="—" detail="/ 100" />
-      <StatusMetric label="Security" value="—" detail="/ 100" />
+      <StatusMetric
+        label="Resilience"
+        value={analysis?.resilienceScore.toString() ?? '—'}
+        detail={metricDetail}
+      />
+      <StatusMetric
+        label="Security"
+        value={analysis?.securityScore.toString() ?? '—'}
+        detail={metricDetail}
+      />
 
       <div className="ml-auto flex h-full items-center gap-5 px-3">
         <div className="flex items-center gap-1.5 text-[10px] text-slate-600">

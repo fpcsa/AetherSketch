@@ -9,6 +9,7 @@ export type ArchitectureErrorCode =
   | 'DUPLICATE_EDGE_ID'
   | 'INVALID_CONFIGURATION'
   | 'INVALID_ARCHITECTURE'
+  | 'INVALID_FAILURE_TARGET'
   | 'HISTORY_EMPTY';
 
 type ArchitectureDomainErrorOptions = {

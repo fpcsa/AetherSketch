@@ -194,6 +194,7 @@ export type ArchitectureAction =
   | 'component.unlocked'
   | 'component.moved'
   | 'connection.created'
+  | 'connection.updated'
   | 'connection.removed'
   | 'constraints.updated'
   | 'history.undo'
@@ -257,6 +258,14 @@ export type ConnectComponentsInput = {
   source: string;
   target: string;
   type: ConnectionType;
+  protocol?: string;
+  encrypted?: boolean;
+  critical?: boolean;
+  metadata?: JsonObject;
+};
+
+export type ConnectionUpdate = {
+  type?: ConnectionType;
   protocol?: string;
   encrypted?: boolean;
   critical?: boolean;

@@ -6,10 +6,14 @@ import {
   Network,
   RadioTower,
   ServerCog,
+  Plus,
 } from 'lucide-react';
 
 import { componentCatalog, componentKinds } from '../../architecture/catalog';
+import type { ComponentKind } from '../../architecture/model';
+import { useArchitectureStore } from '../../stores/architecture-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
+import { COMPONENT_DRAG_TYPE } from '../canvas/ArchitectureCanvas';
 import {
   paletteCategories,
   type PaletteCategoryId,
@@ -30,12 +34,30 @@ export function ComponentPalette() {
   const setActiveCategory = useWorkspaceUiStore(
     (state) => state.setActivePaletteCategory,
   );
+  const selectComponent = useWorkspaceUiStore((state) => state.focusComponent);
+  const setActivePanel = useWorkspaceUiStore((state) => state.setActivePanel);
+  const componentCount = useArchitectureStore(
+    (state) => state.architecture.components.length,
+  );
+  const addComponent = useArchitectureStore((state) => state.addComponent);
   const selectedCategory =
     paletteCategories.find((category) => category.id === activeCategory) ??
     paletteCategories[0];
   const catalogEntries = componentKinds
     .map((kind) => componentCatalog[kind])
     .filter((entry) => entry.category === activeCategory);
+
+  const addCatalogComponent = (kind: ComponentKind) => {
+    const component = addComponent({
+      kind,
+      position: {
+        x: 96 + (componentCount % 4) * 224,
+        y: 96 + Math.floor(componentCount / 4) * 144,
+      },
+    });
+    selectComponent(component.id);
+    setActivePanel('inspector');
+  };
 
   return (
     <aside
@@ -106,22 +128,36 @@ export function ComponentPalette() {
           aria-label={`${selectedCategory.label} catalog`}
         >
           {catalogEntries.map((entry) => (
-            <li
-              key={entry.kind}
-              className="flex min-h-10 items-center gap-2 border border-transparent px-2 py-1.5"
-            >
-              <span
-                className="size-1.5 shrink-0 rounded-full bg-slate-700"
-                aria-hidden="true"
-              />
-              <span className="min-w-0">
-                <span className="block truncate text-[10px] font-medium text-slate-400">
-                  {entry.displayName}
+            <li key={entry.kind}>
+              <button
+                type="button"
+                draggable
+                onDragStart={(event) => {
+                  event.dataTransfer.setData(COMPONENT_DRAG_TYPE, entry.kind);
+                  event.dataTransfer.effectAllowed = 'copy';
+                }}
+                onClick={() => addCatalogComponent(entry.kind)}
+                className="group flex min-h-11 w-full items-center gap-2 border border-transparent px-2 py-1.5 text-left transition-colors hover:border-slate-700 hover:bg-slate-900/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80"
+                title={`${entry.description} Click to add or drag onto the canvas.`}
+                aria-label={`Add ${entry.displayName}`}
+              >
+                <span
+                  className="size-1.5 shrink-0 rounded-full bg-slate-700 transition-colors group-hover:bg-cyan-400"
+                  aria-hidden="true"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[10px] font-medium text-slate-400 group-hover:text-slate-200">
+                    {entry.displayName}
+                  </span>
+                  <span className="block truncate text-[9px] text-slate-700 group-hover:text-slate-500">
+                    {entry.aws.displayName}
+                  </span>
                 </span>
-                <span className="block truncate text-[9px] text-slate-700">
-                  {entry.aws.displayName}
-                </span>
-              </span>
+                <Plus
+                  className="size-3 text-slate-700 transition-colors group-hover:text-cyan-400"
+                  aria-hidden="true"
+                />
+              </button>
             </li>
           ))}
         </ul>

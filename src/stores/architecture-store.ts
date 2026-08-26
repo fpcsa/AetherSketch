@@ -23,10 +23,12 @@ import type {
   AddComponentInput,
   Architecture,
   ArchitectureComponent,
+  ArchitectureConnection,
   ArchitectureConstraints,
   ComponentKind,
   ComponentPosition,
   ComponentUpdate,
+  ConnectionUpdate,
   ConnectComponentsInput,
   CreateArchitectureInput,
   JsonObject,
@@ -66,6 +68,11 @@ export type ArchitectureStore = PersistedArchitectureState & {
   ) => ArchitectureComponent;
   removeComponent: (componentId: string, actor?: Actor) => void;
   connectComponents: (input: ConnectComponentsInput, actor?: Actor) => string;
+  updateConnection: (
+    connectionId: string,
+    changes: ConnectionUpdate,
+    actor?: Actor,
+  ) => ArchitectureConnection;
   disconnectComponents: (connectionId: string, actor?: Actor) => void;
   setConstraints: (
     constraints: Partial<ArchitectureConstraints>,
@@ -451,6 +458,40 @@ export function createArchitectureStore(
               { connectionId, source: input.source, target: input.target },
             );
             return connectionId;
+          },
+
+          updateConnection: (connectionId, changes, actor = 'human') => {
+            const current = get().architecture;
+            const connection = current.connections.find(
+              (candidate) => candidate.id === connectionId,
+            );
+
+            if (!connection) {
+              throw new ArchitectureDomainError(
+                'EDGE_NOT_FOUND',
+                `Connection not found: ${connectionId}`,
+                { edgeId: connectionId },
+              );
+            }
+
+            const updatedConnection: ArchitectureConnection = {
+              ...connection,
+              ...changes,
+              metadata: changes.metadata ?? connection.metadata,
+            };
+            const next = withIncrementedRevision(current, {
+              connections: current.connections.map((candidate) =>
+                candidate.id === connectionId ? updatedConnection : candidate,
+              ),
+            });
+            commit(
+              next,
+              actor,
+              'connection.updated',
+              `Updated connection ${connectionId}`,
+              { connectionId },
+            );
+            return updatedConnection;
           },
 
           disconnectComponents: (connectionId, actor = 'human') => {

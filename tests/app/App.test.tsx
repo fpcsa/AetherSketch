@@ -3,18 +3,28 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { App } from '../../src/app/App';
 import { useArchitectureStore } from '../../src/stores/architecture-store';
+import { useIntelligenceStore } from '../../src/stores/intelligence-store';
 import { useWorkspaceUiStore } from '../../src/stores/workspace-ui-store';
 import { getArchitectureTemplate } from '../../src/templates';
 
 describe('AetherSketch application shell', () => {
   beforeEach(() => {
-    useWorkspaceUiStore.setState({ activePaletteCategory: 'network' });
+    useWorkspaceUiStore.setState({
+      activePaletteCategory: 'network',
+      selectedComponentId: null,
+      selectedConnectionId: null,
+      activePanel: 'inspector',
+      focusRequest: 0,
+      activityOpen: false,
+      notice: null,
+    });
     useArchitectureStore.setState({
       architecture: getArchitectureTemplate('ecommerce-production'),
       activity: [],
       past: [],
       future: [],
     });
+    useIntelligenceStore.getState().runAnalysis();
   });
 
   it('renders every major workspace region', () => {
@@ -36,8 +46,13 @@ describe('AetherSketch application shell', () => {
     expect(
       screen.getByRole('contentinfo', { name: 'Architecture status' }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText('Ecommerce Production')).toHaveLength(3);
+    expect(screen.getAllByText('Ecommerce Production')).toHaveLength(2);
     expect(screen.getByText('Orders Database')).toBeInTheDocument();
+    expect(screen.getByText('Estimated architecture cost')).toBeInTheDocument();
+    expect(screen.getByText('$675')).toBeInTheDocument();
+    expect(screen.getByText('planning — not AWS quote')).toBeInTheDocument();
+    expect(screen.getByText('57')).toBeInTheDocument();
+    expect(screen.getByText('76')).toBeInTheDocument();
   });
 
   it('includes all required palette categories and keeps selection in UI state', () => {
@@ -66,16 +81,12 @@ describe('AetherSketch application shell', () => {
     );
   });
 
-  it('keeps future integration actions unavailable while exposing real history controls', () => {
+  it('exposes real project actions and truthful WebMCP feature detection', () => {
     render(<App />);
 
     expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled();
-    expect(
-      screen.getByRole('button', {
-        name: 'Import architecture (not available yet)',
-      }),
-    ).toBeDisabled();
-    expect(screen.getAllByText('Not registered')).toHaveLength(1);
-    expect(screen.getByText('Integration pending')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Import' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Export' })).toBeEnabled();
+    expect(screen.getAllByText('Unavailable')).toHaveLength(2);
   });
 });

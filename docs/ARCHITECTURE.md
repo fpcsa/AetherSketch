@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document describes the Prompt 2 foundation and Architecture IR. It deliberately does not describe the later analysis engines, simulation engine, visual XYFlow editor, or WebMCP tools as implemented features.
+This document describes the Prompt 4 Architecture IR, deterministic intelligence layer, and complete human visual workspace. WebMCP tools remain a later milestone.
 
 ## Runtime shape
 
@@ -21,9 +21,12 @@ The Cloudflare Vite plugin runs the React client and Worker together in developm
 - `src/components` owns small, presentation-focused workspace regions.
 - `src/architecture/model` defines the provider-neutral Architecture IR, strict runtime schemas, factories, and typed errors.
 - `src/architecture/catalog` defines AWS-first mappings and safe defaults for the 19 MVP component kinds.
+- `src/architecture/analysis` contains pure validation, cost, score, constraint, and combined-analysis functions.
+- `src/architecture/simulation` contains pure component, availability-zone, and region failure simulation.
 - `src/architecture/serialization` is the schema-validated JSON boundary.
 - `src/stores/architecture-store.ts` owns the current Architecture IR and all domain mutations.
-- `src/stores/workspace-ui-store.ts` separately owns transient presentation state, such as the active palette category.
+- `src/stores/intelligence-store.ts` owns non-persisted analysis and simulation results.
+- `src/stores/workspace-ui-store.ts` separately owns selection, focus requests, open panels, notices, and other transient presentation state.
 - `src/templates` owns three validated starting architectures.
 - `src/utils` contains framework-independent helpers and validation schemas.
 - `worker` is isolated from React and currently exposes only service health.
@@ -38,7 +41,27 @@ Connections are semantic records with source and target component IDs, a connect
 
 The Zod schema version is currently `1`. Deserialization validates the complete graph before returning an Architecture, and failures use `INVALID_ARCHITECTURE` with structured issue details.
 
-The later XYFlow canvas will be a rendering and interaction projection. XYFlow node and edge objects will not be stored as the architecture domain model. UI selection, viewport state, and future simulation overlays will remain outside architectural undo history.
+The XYFlow canvas is a rendering and interaction projection. Node positions are initialized from the IR; transient drag state remains local to XYFlow and the final position commits through `moveComponent`. Adds, connections, deletion, and selection similarly route through domain or UI-store actions. XYFlow node and edge objects are never stored as the architecture domain model. UI selection, viewport state, and simulation overlays remain outside architectural undo history.
+
+## Visual workspace
+
+Catalog entries drive the categorized component palette and typed node presentation. Custom nodes show the component name, AWS mapping, category, lock/critical markers, modeled region or zone count, and textual operational/degraded/failed status. Semantic connection types have distinct colors and dash treatments; simulation impact overrides them with an explicit impacted state.
+
+The right workspace panel switches between typed inspection, analysis, and simulation. Component configuration fields are generated from the discriminated IR configuration, while known enum properties use bounded selectors. Locked components disable architectural fields and deletion until explicitly unlocked. Connections have a dedicated inspector for type, protocol, encryption, and criticality.
+
+Constraints remain human-authored IR data. Their UI presents stale state after edits and explicit deterministic results after analysis. Findings can select and focus affected nodes or edges. Failure simulation remains a transient overlay and never writes to project persistence or history.
+
+The top bar owns template/reset, validated JSON import/export, undo/redo, and activity history entry points. Invalid imports are rejected before `loadArchitecture`, preserving the current project.
+
+## Intelligence boundary
+
+All analysis functions accept an Architecture value and return structured results without mutating their input. The combined `analyzeArchitecture` operation always calculates validation, estimated cost, resilience, security, and constraint results; its optional focus only filters the top-level finding list.
+
+Findings have stable IDs, explicit rule codes, severity, category, human-readable explanation and remediation, component or edge references where relevant, and JSON evidence. Scores expose every numeric adjustment. Constraint evaluation compares calculated values against the Architecture's human-authored budget, target scores, required region, Multi-AZ requirement, and encryption-at-rest requirement.
+
+The intelligence store is deliberately separate from the persisted architecture store. Running or clearing analysis and simulation never changes the IR, activity log, or undo/redo history. When the architecture reference changes, an existing analysis is marked stale and any prior simulation is cleared. Re-running analysis binds results to the new architecture revision.
+
+See [`ANALYSIS.md`](ANALYSIS.md) for the rule model and limitations.
 
 ## Store and history
 
@@ -46,7 +69,7 @@ The Zustand architecture store exposes domain-oriented actions instead of encour
 
 Locked components reject configuration changes and removal through `COMPONENT_LOCKED`. Position changes use a dedicated action and remain allowed. Removing an unlocked component also removes its connected semantic edges so the IR cannot become dangling.
 
-Undo and redo operate only on Architecture snapshots. Activity records remain an append-only audit view, while transient UI state lives in a separate store.
+Undo and redo operate only on Architecture snapshots. Activity records remain an append-only audit view, while transient UI and intelligence state live in separate stores.
 
 ## Persistence
 
@@ -64,15 +87,15 @@ Template getters return cloned, validated architectures so mutations cannot alte
 
 ## WebMCP boundary
 
-No WebMCP API is registered in this milestone. The visible status text says that integration is pending/not registered. A later `src/webmcp` layer will be added only after the current official API has been verified, and it will call the same domain operations as the human UI.
+No WebMCP API is registered in this milestone. The visible status performs only real feature detection for `document.modelContext` and reports Ready or Unavailable. A later `src/webmcp` layer will be added only after the current official API has been verified, and it will call the same domain operations as the human UI.
 
 ## Dependency rationale
 
 - React and Vite provide the client application shell.
 - The Cloudflare Vite plugin and Wrangler provide a production-faithful Worker runtime and combined asset deployment.
 - Tailwind CSS provides the visual system and compact layout utilities.
-- Zustand owns the Architecture IR through a dedicated domain-action store and separately owns transient UI state.
+- Zustand owns the Architecture IR through a dedicated domain-action store and separately owns transient UI and intelligence state.
 - Zod validates structured runtime boundaries, starting with the health response contract.
-- `@xyflow/react` is pinned as part of the intended stack but remains unused until the editor milestone.
+- `@xyflow/react` renders the interactive graph while the provider-neutral IR remains authoritative.
 - lucide-react provides accessible, consistent interface iconography.
 - Vitest and Testing Library verify both rendered application structure and Worker behavior.
