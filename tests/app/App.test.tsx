@@ -2,11 +2,19 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { App } from '../../src/app/App';
+import { useArchitectureStore } from '../../src/stores/architecture-store';
 import { useWorkspaceUiStore } from '../../src/stores/workspace-ui-store';
+import { getArchitectureTemplate } from '../../src/templates';
 
 describe('AetherSketch application shell', () => {
   beforeEach(() => {
     useWorkspaceUiStore.setState({ activePaletteCategory: 'network' });
+    useArchitectureStore.setState({
+      architecture: getArchitectureTemplate('ecommerce-production'),
+      activity: [],
+      past: [],
+      future: [],
+    });
   });
 
   it('renders every major workspace region', () => {
@@ -28,6 +36,8 @@ describe('AetherSketch application shell', () => {
     expect(
       screen.getByRole('contentinfo', { name: 'Architecture status' }),
     ).toBeInTheDocument();
+    expect(screen.getAllByText('Ecommerce Production')).toHaveLength(3);
+    expect(screen.getByText('Orders Database')).toBeInTheDocument();
   });
 
   it('includes all required palette categories and keeps selection in UI state', () => {
@@ -56,12 +66,10 @@ describe('AetherSketch application shell', () => {
     );
   });
 
-  it('labels future actions as unavailable instead of simulating behavior', () => {
+  it('keeps future integration actions unavailable while exposing real history controls', () => {
     render(<App />);
 
-    expect(
-      screen.getByRole('button', { name: 'Undo (not available yet)' }),
-    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled();
     expect(
       screen.getByRole('button', {
         name: 'Import architecture (not available yet)',

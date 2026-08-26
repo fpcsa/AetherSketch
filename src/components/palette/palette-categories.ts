@@ -1,12 +1,14 @@
+import type { ComponentCategory } from '../../architecture/model';
+
 export const paletteCategoryIds = [
   'network',
   'compute',
   'data',
   'integration',
   'platform',
-] as const;
+] as const satisfies readonly ComponentCategory[];
 
-export type PaletteCategoryId = (typeof paletteCategoryIds)[number];
+export type PaletteCategoryId = ComponentCategory;
 
 export type PaletteCategory = {
   id: PaletteCategoryId;

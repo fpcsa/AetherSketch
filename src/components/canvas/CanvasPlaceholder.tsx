@@ -7,10 +7,15 @@ import {
   Plus,
 } from 'lucide-react';
 
+import { getCatalogEntry } from '../../architecture/catalog';
+import { useArchitectureStore } from '../../stores/architecture-store';
+
 const canvasButtonClass =
   'grid size-7 place-items-center border border-transparent text-slate-600 disabled:cursor-not-allowed disabled:opacity-60';
 
 export function CanvasPlaceholder() {
+  const architecture = useArchitectureStore((state) => state.architecture);
+
   return (
     <section
       className="relative flex h-full min-h-0 flex-col overflow-hidden"
@@ -30,9 +35,7 @@ export function CanvasPlaceholder() {
         <span className="mx-2 text-slate-700" aria-hidden="true">
           /
         </span>
-        <span className="text-[10px] text-slate-600">
-          Untitled Architecture
-        </span>
+        <span className="text-[10px] text-slate-600">{architecture.name}</span>
 
         <div className="ml-auto flex items-center gap-1">
           <div className="mr-2 flex items-center gap-1.5 text-[9px] uppercase tracking-[0.12em] text-slate-700">
@@ -40,7 +43,7 @@ export function CanvasPlaceholder() {
               className="size-1.5 rounded-full bg-amber-400/60"
               aria-hidden="true"
             />
-            Foundation
+            Domain model active
           </div>
           <button
             type="button"
@@ -80,7 +83,7 @@ export function CanvasPlaceholder() {
         <div className="canvas-axis canvas-axis-y" aria-hidden="true" />
 
         <div className="absolute inset-0 grid place-items-center px-8 pb-8">
-          <div className="w-full max-w-[430px] border border-slate-800/90 bg-[#0c1118]/95 shadow-2xl shadow-black/20">
+          <div className="w-full max-w-[760px] border border-slate-800/90 bg-[#0c1118]/95 shadow-2xl shadow-black/20">
             <div className="flex h-9 items-center border-b border-slate-800 px-3">
               <BoxSelect
                 className="size-3.5 text-cyan-400"
@@ -90,45 +93,60 @@ export function CanvasPlaceholder() {
                 Canvas foundation ready
               </span>
               <span className="ml-auto font-mono text-[9px] text-slate-700">
-                0 nodes
+                {architecture.components.length} nodes ·{' '}
+                {architecture.connections.length} edges
               </span>
             </div>
 
             <div className="px-5 py-5">
-              <h2 className="text-sm font-semibold tracking-[-0.01em] text-slate-200">
-                A shared architecture workspace
-              </h2>
-              <p className="mt-2 max-w-[360px] text-[11px] leading-[1.65] text-slate-500">
-                The shell is prepared for a provider-neutral architecture model
-                and its XYFlow projection. Editing is intentionally deferred to
-                the next product milestones.
-              </p>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-sm font-semibold tracking-[-0.01em] text-slate-200">
+                    {architecture.name}
+                  </h2>
+                  <p className="mt-1 text-[10px] text-slate-600">
+                    {architecture.provider.provider.toUpperCase()} ·{' '}
+                    {architecture.region} · schema v{architecture.schemaVersion}
+                  </p>
+                </div>
+                <span className="border border-emerald-400/20 bg-emerald-400/5 px-2 py-1 text-[9px] font-medium uppercase tracking-[0.1em] text-emerald-400/70">
+                  IR source of truth
+                </span>
+              </div>
 
-              <div className="mt-5 grid grid-cols-3 border border-slate-800/80">
-                {['Domain IR', 'XYFlow view', 'Agent tools'].map(
-                  (label, index) => (
-                    <div
-                      key={label}
-                      className="relative border-r border-slate-800/80 px-3 py-3 last:border-r-0"
+              <ol className="mt-5 flex items-stretch overflow-hidden border border-slate-800/80">
+                {architecture.components.map((component, index) => {
+                  const catalogEntry = getCatalogEntry(component.kind);
+                  return (
+                    <li
+                      key={component.id}
+                      className="relative min-w-0 flex-1 border-r border-slate-800/80 px-2.5 py-3 last:border-r-0"
                     >
-                      <div className="mb-2 flex items-center gap-2">
-                        <span className="font-mono text-[9px] text-slate-700">
-                          0{index + 1}
+                      <div className="mb-2 flex items-center gap-1.5">
+                        <span className="font-mono text-[8px] text-cyan-400/60">
+                          {String(index + 1).padStart(2, '0')}
                         </span>
                         <span
                           className="h-px flex-1 bg-slate-800"
                           aria-hidden="true"
                         />
                       </div>
-                      <span className="text-[10px] font-medium text-slate-500">
-                        {label}
+                      <span className="block truncate text-[9px] font-medium text-slate-400">
+                        {component.name}
                       </span>
-                      <span className="mt-1 block text-[9px] text-slate-700">
-                        Planned
+                      <span className="mt-1 block truncate text-[8px] text-slate-700">
+                        {catalogEntry.aws.displayName}
                       </span>
-                    </div>
-                  ),
-                )}
+                    </li>
+                  );
+                })}
+              </ol>
+
+              <div className="mt-3 flex items-center justify-between text-[9px] text-slate-700">
+                <span>
+                  Read-only IR preview · XYFlow projection follows later
+                </span>
+                <span className="font-mono">rev {architecture.revision}</span>
               </div>
             </div>
           </div>

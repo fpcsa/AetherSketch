@@ -8,15 +8,20 @@ ChatGPT is the copilot. AetherSketch does **not** embed a chatbot, call an LLM A
 
 ## Current status
 
-This repository currently implements the Prompt 1 foundation:
+This repository currently implements the Prompt 2 architecture-state milestone:
 
 - a compact, desktop-first architecture workspace shell;
-- top bar, component palette, canvas placeholder, inspector, constraints panel, and status bar;
-- truthful placeholders for undo, redo, import, export, analysis metrics, and WebMCP;
+- a strongly typed, provider-neutral Architecture IR with an explicit schema version;
+- an AWS-first catalog for 19 MVP component kinds;
+- semantic connections, human constraints, component locks, and typed domain errors;
+- an actor-aware Zustand store with domain actions, undo/redo, activity history, and localStorage persistence;
+- Ecommerce Production, Serverless API, and Event Processing templates;
+- a read-only IR preview in the shell, with Ecommerce Production loaded by default;
+- truthful placeholders for import, export, analysis metrics, and WebMCP;
 - Cloudflare Workers + static-assets integration with `GET /api/health`;
-- strict TypeScript, ESLint, Prettier, Vitest, and component/Worker tests.
+- strict TypeScript, ESLint, Prettier, Vitest, and domain/store/component/Worker tests.
 
-The architecture editor, Architecture IR, deterministic analysis engines, and actual WebMCP tools are intentionally deferred to later milestones. No placeholder pretends those capabilities already exist.
+The XYFlow editor, deterministic analysis engines, simulation UI, and actual WebMCP tools are intentionally deferred to later milestones. No placeholder pretends those capabilities already exist.
 
 ## Architecture
 
@@ -24,6 +29,10 @@ The project separates application composition, presentational components, UI-onl
 
 ```text
 src/
+  architecture/
+    catalog/            AWS-first component catalog and creation defaults
+    model/              Provider-neutral IR, Zod schemas, errors, factories
+    serialization/      Validated JSON import/export boundary
   app/                  Application composition
   components/
     agent/              Honest WebMCP status presentation
@@ -31,7 +40,8 @@ src/
     inspector/          Inspector and constraints shell
     layout/             Top and status bars
     palette/            Palette navigation and display metadata
-  stores/               UI-only Zustand state
+  stores/               Architecture source of truth and separate UI state
+  templates/            Validated architecture starting points
   styles/               Tailwind entry point and workspace styling
   utils/                Shared runtime schemas
 worker/                 Cloudflare Worker entry point
@@ -39,7 +49,36 @@ tests/                  Component and Worker tests
 docs/                   Architecture decisions and boundaries
 ```
 
-Future provider-neutral architecture state will live outside React and XYFlow. XYFlow will render a projection of that state and will never become the domain source of truth. The existing Zustand store contains only transient workspace UI state.
+The provider-neutral Architecture IR lives outside React and XYFlow. The architecture store owns that IR and exposes domain actions; React subscribes to it without mutating raw state. Transient palette state remains in a separate UI store. XYFlow will later render a projection of the IR and will never become the domain source of truth.
+
+### Architecture IR
+
+An architecture includes its identity, description, provider context, region, schema version, revision, typed components, semantic connections, human constraints, and metadata. Components are a discriminated union keyed by `kind`, so an RDS-style SQL database cannot accidentally receive queue configuration, for example.
+
+Connections describe architectural meaning (`request`, `async`, `data`, `replication`, or `management`) rather than only visual lines. Zod validation rejects duplicate IDs, dangling endpoints, self-connections, malformed component configuration, and unsupported schema versions.
+
+### Store API
+
+`useArchitectureStore` exposes these domain actions:
+
+- project lifecycle: `createArchitecture`, `loadArchitecture`, `renameArchitecture`, `resetArchitecture`;
+- components: `addComponent`, `updateComponent`, `removeComponent`, `moveComponent`, `lockComponent`, `unlockComponent`;
+- connections and constraints: `connectComponents`, `disconnectComponents`, `setConstraints`;
+- history: `undo`, `redo`.
+
+Every mutation accepts `human`, `agent`, or `system` actor attribution and records a structured activity entry. Locked components may still be inspected or moved, but cannot be configured or removed until explicitly unlocked. Architecture snapshots—not transient UI state—power undo and redo.
+
+### Default Ecommerce IR
+
+```text
+Customer Traffic
+  → Storefront CDN (CloudFront)
+  → Public Application Load Balancer
+  → Storefront API (ECS, one replica in eu-west-1a)
+  → Orders Database (RDS PostgreSQL, single-AZ)
+```
+
+The single-AZ compute and database tiers are intentional weaknesses for the later deterministic resilience-analysis milestone.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the current boundaries and planned extension points.
 
@@ -51,7 +90,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the current boundaries and 
 - Tailwind CSS
 - Zustand
 - Zod
-- `@xyflow/react` (installed for the later canvas milestone, not initialized prematurely)
+- `@xyflow/react` (installed for the later canvas milestone; never used as domain state)
 - lucide-react
 - Vitest and Testing Library
 

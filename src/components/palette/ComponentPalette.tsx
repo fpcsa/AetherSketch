@@ -8,6 +8,7 @@ import {
   ServerCog,
 } from 'lucide-react';
 
+import { componentCatalog, componentKinds } from '../../architecture/catalog';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
 import {
   paletteCategories,
@@ -32,6 +33,9 @@ export function ComponentPalette() {
   const selectedCategory =
     paletteCategories.find((category) => category.id === activeCategory) ??
     paletteCategories[0];
+  const catalogEntries = componentKinds
+    .map((kind) => componentCatalog[kind])
+    .filter((entry) => entry.category === activeCategory);
 
   return (
     <aside
@@ -93,18 +97,38 @@ export function ComponentPalette() {
         </p>
       </div>
 
-      <div className="m-3 mt-4 border border-dashed border-slate-800 bg-slate-900/20 p-3">
-        <div className="mb-2 h-1 w-8 bg-slate-800" aria-hidden="true" />
-        <p className="text-[11px] font-medium text-slate-500">
-          Catalog pending
+      <div className="mx-3 mt-3 min-h-0 flex-1 overflow-auto border-t border-slate-800/80 py-2">
+        <p className="mb-1.5 text-[9px] uppercase tracking-[0.12em] text-slate-700">
+          AWS-first catalog
         </p>
-        <p className="mt-1 text-[10px] leading-4 text-slate-700">
-          Typed components arrive with the architecture domain model.
-        </p>
+        <ul
+          className="space-y-px"
+          aria-label={`${selectedCategory.label} catalog`}
+        >
+          {catalogEntries.map((entry) => (
+            <li
+              key={entry.kind}
+              className="flex min-h-10 items-center gap-2 border border-transparent px-2 py-1.5"
+            >
+              <span
+                className="size-1.5 shrink-0 rounded-full bg-slate-700"
+                aria-hidden="true"
+              />
+              <span className="min-w-0">
+                <span className="block truncate text-[10px] font-medium text-slate-400">
+                  {entry.displayName}
+                </span>
+                <span className="block truncate text-[9px] text-slate-700">
+                  {entry.aws.displayName}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
 
       <div className="mt-auto border-t border-slate-800/80 px-3 py-2.5 text-[9px] uppercase tracking-[0.12em] text-slate-700">
-        Provider-neutral foundation
+        Provider-neutral IR · {componentKinds.length} kinds
       </div>
     </aside>
   );

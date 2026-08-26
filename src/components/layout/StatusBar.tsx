@@ -1,5 +1,6 @@
 import { Cloud, ShieldCheck } from 'lucide-react';
 
+import { useArchitectureStore } from '../../stores/architecture-store';
 import { WebMcpStatus } from '../agent/WebMcpStatus';
 
 type StatusMetricProps = {
@@ -23,12 +24,23 @@ function StatusMetric({ label, value, detail }: StatusMetricProps) {
 }
 
 export function StatusBar() {
+  const estimatedMonthlyCost = useArchitectureStore((state) =>
+    state.architecture.components.reduce(
+      (total, component) => total + component.estimatedMonthlyCost,
+      0,
+    ),
+  );
+
   return (
     <footer
       className="flex h-8 shrink-0 items-center border-t border-slate-800/90 bg-[#0b0f15]"
       aria-label="Architecture status"
     >
-      <StatusMetric label="Estimated cost" value="—" detail="/ month" />
+      <StatusMetric
+        label="Estimated cost"
+        value={`$${estimatedMonthlyCost.toLocaleString('en-US')}`}
+        detail="/ month baseline"
+      />
       <StatusMetric label="Resilience" value="—" detail="/ 100" />
       <StatusMetric label="Security" value="—" detail="/ 100" />
 

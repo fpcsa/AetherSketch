@@ -6,6 +6,8 @@ import {
   Settings2,
 } from 'lucide-react';
 
+import { useArchitectureStore } from '../../stores/architecture-store';
+
 type ConstraintRowProps = {
   label: string;
   value: string;
@@ -21,6 +23,10 @@ function ConstraintRow({ label, value }: ConstraintRowProps) {
 }
 
 export function InspectorSidebar() {
+  const constraints = useArchitectureStore(
+    (state) => state.architecture.constraints,
+  );
+
   return (
     <aside
       className="flex min-h-0 flex-col border-l border-slate-800/90 bg-[#0b0f15]"
@@ -81,12 +87,44 @@ export function InspectorSidebar() {
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto px-3 py-2">
-          <ConstraintRow label="Maximum monthly cost" value="—" />
-          <ConstraintRow label="Target resilience" value="— / 100" />
-          <ConstraintRow label="Target security" value="— / 100" />
-          <ConstraintRow label="Required region" value="—" />
-          <ConstraintRow label="Multi-AZ required" value="—" />
-          <ConstraintRow label="Encryption at rest" value="—" />
+          <ConstraintRow
+            label="Maximum monthly cost"
+            value={
+              constraints.maximumMonthlyCost === undefined
+                ? 'Not set'
+                : `$${constraints.maximumMonthlyCost.toLocaleString('en-US')}`
+            }
+          />
+          <ConstraintRow
+            label="Target resilience"
+            value={
+              constraints.targetResilienceScore === undefined
+                ? 'Not set'
+                : `${constraints.targetResilienceScore} / 100`
+            }
+          />
+          <ConstraintRow
+            label="Target security"
+            value={
+              constraints.targetSecurityScore === undefined
+                ? 'Not set'
+                : `${constraints.targetSecurityScore} / 100`
+            }
+          />
+          <ConstraintRow
+            label="Required region"
+            value={constraints.requiredRegion ?? 'Any'}
+          />
+          <ConstraintRow
+            label="Multi-AZ required"
+            value={constraints.requireMultiAZ ? 'Required' : 'Optional'}
+          />
+          <ConstraintRow
+            label="Encryption at rest"
+            value={
+              constraints.requireEncryptionAtRest ? 'Required' : 'Optional'
+            }
+          />
 
           <div className="mt-3 flex items-start gap-2 border border-slate-800/70 bg-slate-900/20 p-2.5">
             <LockKeyhole
@@ -94,8 +132,8 @@ export function InspectorSidebar() {
               aria-hidden="true"
             />
             <p className="text-[9px] leading-4 text-slate-700">
-              Constraints remain human-controlled. Editing will be introduced
-              with the architecture domain model.
+              Constraints are stored in the Architecture IR and remain
+              human-controlled. Editing controls arrive with the visual editor.
             </p>
           </div>
         </div>
