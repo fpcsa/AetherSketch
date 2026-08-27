@@ -5,7 +5,7 @@ export type WebMcpRegistration = {
   dispose: () => void;
 };
 
-export async function registerWebMcpReadTools(
+export async function registerWebMcpTools(
   context: WebMcpRegistrationTarget,
   tools: readonly WebMCP.ModelContextTool[],
   controller: AbortController = new AbortController(),
@@ -26,3 +26,6 @@ export async function registerWebMcpReadTools(
     dispose: () => controller.abort(),
   };
 }
+
+/** Backward-compatible name for the persistent read-tool registration group. */
+export const registerWebMcpReadTools = registerWebMcpTools;

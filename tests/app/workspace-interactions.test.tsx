@@ -510,7 +510,148 @@ describe('human architecture workspace', () => {
       await Promise.resolve();
     });
     await waitFor(() => expect(screen.getAllByText('Ready')).toHaveLength(2));
-    expect(screen.getAllByText('4 read tools')).toHaveLength(2);
+    expect(screen.getByText('4 read tools')).toBeVisible();
+    expect(screen.getByText('4 read / 0 edit')).toBeVisible();
+  });
+
+  it('dynamically grants and revokes exactly five agent mutation tools', async () => {
+    const registeredTools = new Map<string, WebMCP.ModelContextTool>();
+    const toolSignals = new Map<string, AbortSignal[]>();
+    const registerTool = vi.fn(
+      (
+        tool: WebMCP.ModelContextTool,
+        options?: WebMCP.ModelContextRegisterToolOptions,
+      ) => {
+        registeredTools.set(tool.name, tool);
+        if (options?.signal) {
+          const signals = toolSignals.get(tool.name) ?? [];
+          signals.push(options.signal);
+          toolSignals.set(tool.name, signals);
+          options.signal.addEventListener('abort', () => {
+            if (registeredTools.get(tool.name) === tool) {
+              registeredTools.delete(tool.name);
+            }
+          });
+        }
+        return Promise.resolve();
+      },
+    );
+    Object.defineProperty(document, 'modelContext', {
+      configurable: true,
+      value: { registerTool },
+    });
+    render(<App />);
+
+    await waitFor(() => expect(registeredTools.size).toBe(4));
+    expect([...registeredTools.keys()]).toEqual([
+      'get_architecture',
+      'inspect_component',
+      'analyze_architecture',
+      'simulate_failure',
+    ]);
+    expect(screen.getAllByText('Review Mode')).toHaveLength(2);
+    expect(screen.getByText('0 edit tools')).toBeVisible();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Enable Agent Editing' }),
+    );
+    await waitFor(() => expect(registeredTools.size).toBe(9));
+    expect(registerTool).toHaveBeenCalledTimes(9);
+    expect(useWebMcpStore.getState()).toMatchObject({
+      mode: 'edit',
+      editRegistrationStatus: 'ready',
+    });
+    expect(useWebMcpStore.getState().editTools).toHaveLength(5);
+    expect(screen.getAllByText('Agent Editing Enabled')).toHaveLength(2);
+    expect(screen.getByText('5 edit tools')).toBeVisible();
+
+    await act(async () => {
+      await registeredTools
+        .get('add_component')!
+        .execute(
+          { kind: 'queue', name: 'Agent Fulfillment Queue' },
+          { signal: new AbortController().signal },
+        );
+    });
+    const added = useArchitectureStore
+      .getState()
+      .architecture.components.find(
+        (component) => component.name === 'Agent Fulfillment Queue',
+      );
+    expect(added).toBeDefined();
+    expect(
+      screen.getAllByText('Agent Fulfillment Queue').length,
+    ).toBeGreaterThan(0);
+    expect(useArchitectureStore.getState().activity.at(-1)).toMatchObject({
+      actor: 'agent',
+      action: 'component.added',
+    });
+    expect(useIntelligenceStore.getState().analysisStale).toBe(true);
+
+    useArchitectureStore
+      .getState()
+      .lockComponent('ecommerce-postgresql', 'human');
+    const lockRejection = await act(() =>
+      registeredTools.get('update_component')!.execute(
+        {
+          componentId: 'ecommerce-postgresql',
+          changes: { configuration: { multiAZ: true } },
+        },
+        { signal: new AbortController().signal },
+      ),
+    );
+    expect(lockRejection).toMatchObject({
+      ok: false,
+      error: {
+        code: 'COMPONENT_LOCKED',
+        componentId: 'ecommerce-postgresql',
+      },
+    });
+
+    const staleAddTool = registeredTools.get('add_component')!;
+    const readSignals = toolSignals.get('get_architecture')!;
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Disable Agent Editing' }),
+    );
+    await waitFor(() => expect(registeredTools.size).toBe(4));
+    expect(readSignals.every((signal) => !signal.aborted)).toBe(true);
+    expect(useWebMcpStore.getState()).toMatchObject({
+      mode: 'review',
+      editRegistrationStatus: 'disabled',
+      editTools: [],
+    });
+
+    const componentCount =
+      useArchitectureStore.getState().architecture.components.length;
+    const disabledResult = await staleAddTool.execute(
+      { kind: 'queue' },
+      { signal: new AbortController().signal },
+    );
+    expect(disabledResult).toMatchObject({
+      ok: false,
+      error: { code: 'EDIT_MODE_DISABLED' },
+    });
+    expect(
+      useArchitectureStore.getState().architecture.components,
+    ).toHaveLength(componentCount);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Enable Agent Editing' }),
+    );
+    await waitFor(() => expect(registeredTools.size).toBe(9));
+    expect(registerTool).toHaveBeenCalledTimes(14);
+    expect(new Set(registeredTools.keys()).size).toBe(9);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Disable Agent Editing' }),
+    );
+    await waitFor(() => expect(registeredTools.size).toBe(4));
+    expect([...registeredTools.keys()]).toEqual([
+      'get_architecture',
+      'inspect_component',
+      'analyze_architecture',
+      'simulate_failure',
+    ]);
   });
 
   it('registers live tools whose analysis and simulation update the same page', async () => {
@@ -599,7 +740,7 @@ describe('human architecture workspace', () => {
     expect(
       screen.getByRole('region', { name: 'WebMCP diagnostics' }),
     ).toBeVisible();
-    expect(screen.getByText('Agent review · read only')).toBeVisible();
+    expect(screen.getByText('Review Mode · read only')).toBeVisible();
     expect(
       screen.getByText(/get_architecture, inspect_component/),
     ).toBeVisible();

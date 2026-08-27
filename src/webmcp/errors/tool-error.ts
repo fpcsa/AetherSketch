@@ -6,6 +6,7 @@ export type WebMcpErrorCode =
   | 'INVALID_INPUT'
   | 'EXECUTION_ABORTED'
   | 'INTERNAL_ERROR'
+  | 'EDIT_MODE_DISABLED'
   | 'COMPONENT_LOCKED'
   | 'COMPONENT_NOT_FOUND'
   | 'EDGE_NOT_FOUND'
@@ -13,6 +14,7 @@ export type WebMcpErrorCode =
   | 'DUPLICATE_COMPONENT_ID'
   | 'DUPLICATE_EDGE_ID'
   | 'INVALID_CONFIGURATION'
+  | 'CONSTRAINT_VIOLATION'
   | 'INVALID_ARCHITECTURE'
   | 'INVALID_FAILURE_TARGET'
   | 'HISTORY_EMPTY';
@@ -28,6 +30,33 @@ export type WebMcpToolError = {
 export type WebMcpToolSuccess<T> = { ok: true; data: T };
 export type WebMcpToolFailure = { ok: false; error: WebMcpToolError };
 export type WebMcpToolResult<T> = WebMcpToolSuccess<T> | WebMcpToolFailure;
+
+type WebMcpExecutionErrorOptions = {
+  componentId?: string;
+  edgeId?: string;
+  details?: unknown;
+};
+
+/** Errors enforced by the WebMCP authority boundary rather than the IR. */
+export class WebMcpExecutionError extends Error {
+  readonly code: WebMcpErrorCode;
+  readonly componentId?: string;
+  readonly edgeId?: string;
+  readonly details?: unknown;
+
+  constructor(
+    code: WebMcpErrorCode,
+    message: string,
+    options: WebMcpExecutionErrorOptions = {},
+  ) {
+    super(message);
+    this.name = 'WebMcpExecutionError';
+    this.code = code;
+    this.componentId = options.componentId;
+    this.edgeId = options.edgeId;
+    this.details = options.details;
+  }
+}
 
 export function toWebMcpToolError(
   error: unknown,
@@ -50,6 +79,16 @@ export function toWebMcpToolError(
           message: issue.message,
         })),
       },
+    };
+  }
+
+  if (error instanceof WebMcpExecutionError) {
+    return {
+      code: error.code,
+      message: error.message,
+      componentId: error.componentId,
+      edgeId: error.edgeId,
+      details: error.details,
     };
   }
 

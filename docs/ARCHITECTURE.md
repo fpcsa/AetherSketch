@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document describes the Prompt 5 Architecture IR, deterministic intelligence layer, complete human visual workspace, and WebMCP read integration.
+This document describes the provider-neutral Architecture IR, deterministic intelligence layer, complete human visual workspace, and Prompt 6 WebMCP authority boundary.
 
 ## Runtime shape
 
@@ -11,8 +11,8 @@ The application is one Cloudflare deployment unit:
 ```text
 Browser navigation ──> Cloudflare static assets ──> React workspace shell
 Browser /api/* call ─> Cloudflare Worker ─────────> deterministic API response
-Browser agent ───────> document.modelContext ─────> WebMCP read adapter
-                                                    └─> shared stores/domain engines
+Browser agent ───────> document.modelContext ─────> WebMCP authority adapter
+                                                    └─> shared stores/domain actions
 ```
 
 The Cloudflare Vite plugin runs the React client and Worker together in development and produces their deployable output together at build time. SPA fallback is configured through Wrangler while `/api/*` is explicitly routed to the Worker.
@@ -73,7 +73,7 @@ See [`ANALYSIS.md`](ANALYSIS.md) for the rule model and limitations.
 
 The Zustand architecture store exposes domain-oriented actions instead of encouraging UI components to patch state. Mutations validate a complete candidate IR before commit, increment its revision, capture the prior Architecture snapshot, clear the redo branch, and append an actor-aware activity record.
 
-Locked components reject configuration changes and removal through `COMPONENT_LOCKED`. Position changes use a dedicated action and remain allowed. Removing an unlocked component also removes its connected semantic edges so the IR cannot become dangling.
+Locked components reject configuration changes and removal through `COMPONENT_LOCKED`. Lock and unlock actions are intentionally human-only at the WebMCP boundary. Position changes use a dedicated human action and remain allowed. Removing an unlocked component also removes its connected semantic edges so the IR cannot become dangling.
 
 Undo and redo operate only on Architecture snapshots. Activity records remain an append-only audit view, while transient UI and intelligence state live in separate stores.
 
@@ -93,13 +93,17 @@ Template getters return cloned, validated architectures so mutations cannot alte
 
 ## WebMCP boundary
 
-The integration uses the verified imperative `document.modelContext.registerTool` API and official `webmcp-types` declarations. It registers exactly four read tools in Agent review mode: `get_architecture`, `inspect_component`, `analyze_architecture`, and `simulate_failure`.
+The integration uses the verified imperative `document.modelContext.registerTool` API and official `webmcp-types` declarations. Review Mode is the default and registers exactly four read tools: `get_architecture`, `inspect_component`, `analyze_architecture`, and `simulate_failure`. A human can explicitly enable Agent Edit Mode, which registers exactly five additional tools: `add_component`, `update_component`, `remove_component`, `connect_components`, and `disconnect_components`.
 
 Tool descriptors, JSON-compatible input schemas, runtime Zod validation, compact result projection, and structured error conversion live outside React. The runtime injects store-backed dependencies into those pure descriptors. `get_architecture` and `inspect_component` read current Architecture IR directly; `analyze_architecture` and `simulate_failure` call the intelligence store's existing domain actions and switch the existing right-side panel through the UI store. No analysis or simulation business logic is duplicated.
 
-Feature detection requires a callable `document.modelContext.registerTool`. Supported pages progress from Initializing to Ready only after all registration promises resolve. One `AbortController` owns all registrations and unregisters them on runtime cleanup. Unsupported browsers continue as complete human workspaces. Status never equates API readiness with agent connectivity.
+The mutation descriptors accept only safe domain fields. Kind-specific configuration is validated against the IR's discriminated Zod schema, catalog defaults fill omitted values, and automatic positioning keeps XY coordinates out of the agent contract. Each mutation calls an existing store action with `actor="agent"`; there is no parallel mutation path and no arbitrary patch tool. The agent is not given lock/unlock, constraint, import/reset, history, metadata, provider/service, cost, or raw-position controls.
 
-All tools are annotated read-only. Analysis and simulation update only transient intelligence/presentation state and never mutate Architecture IR or history. See [`WEBMCP.md`](WEBMCP.md) for schemas, outputs, lifecycle, structured errors, testing, and current draft/type-package differences.
+Feature detection requires a callable `document.modelContext.registerTool`. Supported pages progress from Initializing to Ready only after all read registration promises resolve. One long-lived `AbortController` owns the read group. Each enable cycle creates a second controller for the mutation group; disabling first revokes permission and then aborts that signal, so read registrations survive and edit registrations cannot leak or duplicate. Unsupported browsers continue as complete human workspaces. Status never equates API readiness with agent connectivity.
+
+Mutation execution checks Edit Mode both before schema parsing and immediately before the synchronous store action. That second check closes the cached-reference and in-flight-disable race. Hard IR invariants and locks fail closed, while human budget/resilience/security/region/Multi-AZ/encryption constraints remain visible soft goals evaluated after multi-step changes.
+
+The read tools are annotated read-only; mutation tools explicitly are not. Analysis and simulation update only transient intelligence/presentation state and never mutate Architecture IR or history. See [`WEBMCP.md`](WEBMCP.md) for schemas, outputs, lifecycle, structured errors, testing, and current draft/type-package differences, and [`SECURITY.md`](SECURITY.md) for the authority model.
 
 ## Dependency rationale
 

@@ -81,7 +81,7 @@ const componentBaseFields = {
   metadata: metadataSchema,
 };
 
-const componentSchemas = [
+export const componentSchemas = [
   z
     .object({
       ...componentBaseFields,

@@ -8,7 +8,7 @@ ChatGPT is the copilot. AetherSketch does **not** embed a chatbot, call an LLM A
 
 ## Current status
 
-This repository currently implements the Prompt 5 WebMCP read-tools milestone:
+This repository currently implements the Prompt 6 human-authorized Agent Edit Mode milestone:
 
 - a compact, desktop-first architecture workspace built on XYFlow;
 - a strongly typed, provider-neutral Architecture IR with an explicit schema version;
@@ -28,11 +28,15 @@ This repository currently implements the Prompt 5 WebMCP read-tools milestone:
 - a persisted dark/light workspace theme with theme-aware canvas controls, nodes, edges, and panels;
 - live estimated cost, resilience, and security indicators throughout the shell;
 - real imperative WebMCP integration through `document.modelContext` with four compact, read-only architecture tools;
+- explicit Review Mode by default and human-controlled Agent Edit Mode;
+- dynamic, signal-owned registration of exactly five mutation tools while editing is authorized;
+- safe add/update/remove/connect/disconnect adapters with strict schemas, kind validation, automatic placement, and agent activity attribution;
+- defense-in-depth permission checks plus human-only component locks and architecture constraints;
 - truthful unavailable, initializing, ready, and registration-error lifecycle status plus development-only diagnostics;
 - Cloudflare Workers + static-assets integration with `GET /api/health`;
 - strict TypeScript, ESLint, Prettier, Vitest, and domain/store/component/Worker tests.
 
-The current WebMCP mode is **Agent review · read only**. It exposes `get_architecture`, `inspect_component`, `analyze_architecture`, and `simulate_failure`. Agent-triggered analysis and simulation operate through the same stores as the human UI and visibly open their panels and canvas overlays. The regular human workspace remains fully usable when WebMCP is unavailable.
+WebMCP starts in **Review Mode** with `get_architecture`, `inspect_component`, `analyze_architecture`, and `simulate_failure`. Agent-triggered analysis and simulation operate through the same stores as the human UI and visibly open their panels and canvas overlays. When a human explicitly enables Agent Editing, `add_component`, `update_component`, `remove_component`, `connect_components`, and `disconnect_components` are registered for that authorization window. The regular human workspace remains fully usable when WebMCP is unavailable.
 
 ## Architecture
 
@@ -111,13 +115,15 @@ The single-AZ compute and database tiers are intentional weaknesses that make th
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the current boundaries and planned extension points.
 
-### WebMCP read mode
+### WebMCP authority modes
 
-Supported browser environments receive four tools registered with the current imperative `document.modelContext.registerTool` API. Every descriptor has a strict JSON Schema, `readOnlyHint: true`, and `untrustedContentHint: false`. Inputs are also validated with Zod, domain failures become structured tool errors, and registration is owned and cleaned up by an `AbortSignal`.
+Supported browser environments receive four read tools registered with the current imperative `document.modelContext.registerTool` API. Every descriptor has a strict JSON Schema, inputs are also validated with Zod, domain failures become structured tool errors, and registration is owned and cleaned up by an `AbortSignal`.
 
-WebMCP is a progressive enhancement: “Ready” means four tools are registered on the current page, never that an agent is connected. Unsupported browsers show “Unavailable” while retaining the full human workspace. No extension, MCP server, embedded chatbot, or compatibility API is required by AetherSketch.
+Review Mode is the default and exposes no mutation capability. A human can enable Agent Edit Mode to create a separate five-tool registration group; disabling it revokes permission and aborts only that group's signal, leaving the four read tools and accepted architecture changes intact. Mutation execution checks permission again immediately before using the same validated domain actions as the human UI. Locked components reject agent update/removal, and agents cannot lock, unlock, or change human constraints.
 
-See [docs/WEBMCP.md](docs/WEBMCP.md) for exact schemas, output behavior, lifecycle details, current API/type-package notes, and ChatGPT/Chrome testing instructions.
+WebMCP is a progressive enhancement: “Ready” means tools are registered on the current page, never that an agent is connected. Unsupported browsers show “Unavailable” while retaining the full human workspace. No extension, MCP server, embedded chatbot, or compatibility API is required by AetherSketch.
+
+See [docs/WEBMCP.md](docs/WEBMCP.md) for exact behavior, lifecycle details, and testing instructions, and [docs/SECURITY.md](docs/SECURITY.md) for the authority and guardrail model.
 
 ## Technology stack
 

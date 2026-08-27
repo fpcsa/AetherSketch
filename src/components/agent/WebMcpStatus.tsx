@@ -1,4 +1,4 @@
-import { Braces, Bug, X } from 'lucide-react';
+import { Braces, Bug, Pencil, ShieldCheck, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { type WebMcpLifecycleStatus, useWebMcpStore } from '../../webmcp';
@@ -46,8 +46,12 @@ function JsonValue({ value }: { value: unknown }) {
 
 function DebugPanel({ onClose }: { onClose: () => void }) {
   const mode = useWebMcpStore((state) => state.mode);
-  const registeredTools = useWebMcpStore((state) => state.registeredTools);
+  const readTools = useWebMcpStore((state) => state.readTools);
+  const editTools = useWebMcpStore((state) => state.editTools);
   const registrationError = useWebMcpStore((state) => state.registrationError);
+  const editRegistrationError = useWebMcpStore(
+    (state) => state.editRegistrationError,
+  );
   const lastInvocation = useWebMcpStore((state) => state.lastInvocation);
   const lastResult = useWebMcpStore((state) => state.lastResult);
   const lastError = useWebMcpStore((state) => state.lastError);
@@ -80,13 +84,15 @@ function DebugPanel({ onClose }: { onClose: () => void }) {
       <dl className="grid grid-cols-[6rem_1fr] gap-x-3 gap-y-2 text-[11px]">
         <dt className="text-slate-500">Mode</dt>
         <dd className="font-medium text-slate-300">
-          {mode === 'agent-review' ? 'Agent review · read only' : mode}
+          {mode === 'review' ? 'Review Mode · read only' : 'Agent Edit Mode'}
         </dd>
-        <dt className="text-slate-500">Tools</dt>
+        <dt className="text-slate-500">Read tools</dt>
         <dd className="text-slate-300">
-          {registeredTools.length > 0
-            ? registeredTools.join(', ')
-            : 'None registered'}
+          {readTools.length > 0 ? readTools.join(', ') : 'None registered'}
+        </dd>
+        <dt className="text-slate-500">Edit tools</dt>
+        <dd className="text-slate-300">
+          {editTools.length > 0 ? editTools.join(', ') : 'None registered'}
         </dd>
       </dl>
 
@@ -96,6 +102,15 @@ function DebugPanel({ onClose }: { onClose: () => void }) {
             Registration error
           </p>
           <JsonValue value={{ message: registrationError }} />
+        </div>
+      ) : null}
+
+      {editRegistrationError ? (
+        <div className="mt-3">
+          <p className="mb-1 text-[10px] uppercase tracking-[0.12em] text-rose-400">
+            Edit registration error
+          </p>
+          <JsonValue value={{ message: editRegistrationError }} />
         </div>
       ) : null}
 
@@ -130,12 +145,28 @@ function DebugPanel({ onClose }: { onClose: () => void }) {
 export function WebMcpStatus({ compact = false }: WebMcpStatusProps) {
   const [debugOpen, setDebugOpen] = useState(false);
   const status = useWebMcpStore((state) => state.status);
-  const registeredToolCount = useWebMcpStore(
-    (state) => state.registeredTools.length,
+  const mode = useWebMcpStore((state) => state.mode);
+  const editRegistrationStatus = useWebMcpStore(
+    (state) => state.editRegistrationStatus,
+  );
+  const readToolCount = useWebMcpStore((state) => state.readTools.length);
+  const editToolCount = useWebMcpStore((state) => state.editTools.length);
+  const enableAgentEditing = useWebMcpStore(
+    (state) => state.enableAgentEditing,
+  );
+  const disableAgentEditing = useWebMcpStore(
+    (state) => state.disableAgentEditing,
   );
   const presentation = statusPresentation[status];
-  const readyDetail =
-    status === 'ready' ? `${registeredToolCount} read tools` : null;
+  const modeLabel =
+    mode === 'review'
+      ? 'Review Mode'
+      : editRegistrationStatus === 'ready'
+        ? 'Agent Editing Enabled'
+        : editRegistrationStatus === 'error'
+          ? 'Agent Editing Error'
+          : 'Enabling Agent Editing';
+  const readyDetail = status === 'ready';
 
   if (compact) {
     return (
@@ -155,7 +186,15 @@ export function WebMcpStatus({ compact = false }: WebMcpStatusProps) {
         {readyDetail ? (
           <>
             <span className="text-slate-700">·</span>
-            <span className="text-slate-600">{readyDetail}</span>
+            <span
+              className={mode === 'edit' ? 'text-amber-400' : 'text-slate-500'}
+            >
+              {modeLabel}
+            </span>
+            <span className="text-slate-700">·</span>
+            <span className="text-slate-600">{readToolCount} read tools</span>
+            <span className="text-slate-700">·</span>
+            <span className="text-slate-600">{editToolCount} edit tools</span>
           </>
         ) : null}
       </div>
@@ -164,24 +203,66 @@ export function WebMcpStatus({ compact = false }: WebMcpStatusProps) {
 
   return (
     <div className="relative flex items-center">
-      <div
-        className="flex h-8 items-center gap-2 border border-slate-800 bg-[#0d121a] px-2.5 text-[11px] text-slate-400"
-        title={presentation.title}
-        role="status"
-        aria-live="polite"
-      >
-        <Braces className="size-3.5 text-slate-500" aria-hidden="true" />
-        <span
-          className={`size-1.5 rounded-full ${presentation.dot}`}
-          aria-hidden="true"
-        />
-        <span className="font-medium">WebMCP</span>
-        <span className="text-slate-600">{presentation.label}</span>
-        {readyDetail ? (
-          <span className="border-l border-slate-800 pl-2 text-slate-500">
-            {readyDetail}
+      <div className="flex h-8 items-center border border-slate-800 bg-[#0d121a]">
+        <div
+          className="flex h-full items-center gap-2 px-2.5 text-[11px] text-slate-400"
+          title={presentation.title}
+          role="status"
+          aria-live="polite"
+        >
+          <Braces className="size-3.5 text-slate-500" aria-hidden="true" />
+          <span
+            className={`size-1.5 rounded-full ${presentation.dot}`}
+            aria-hidden="true"
+          />
+          <span className="font-medium">WebMCP</span>
+          <span className="text-slate-600">{presentation.label}</span>
+          {readyDetail ? (
+            <>
+              <span className="border-l border-slate-800 pl-2 text-slate-500 max-[1240px]:hidden">
+                {modeLabel}
+              </span>
+              <span className="text-slate-600 max-[1240px]:hidden">
+                {readToolCount} read / {editToolCount} edit
+              </span>
+            </>
+          ) : null}
+        </div>
+
+        <button
+          type="button"
+          className={`flex h-full items-center gap-1.5 border-l px-2.5 text-[11px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 disabled:cursor-not-allowed disabled:text-slate-700 ${
+            mode === 'edit'
+              ? 'border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/15'
+              : 'border-slate-800 text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+          }`}
+          disabled={status !== 'ready'}
+          aria-pressed={mode === 'edit'}
+          aria-label={
+            mode === 'edit' ? 'Disable Agent Editing' : 'Enable Agent Editing'
+          }
+          title={
+            status === 'ready'
+              ? mode === 'edit'
+                ? 'Remove all five mutation tools. Existing architecture changes remain.'
+                : 'Temporarily register five mutation tools for an authorized agent.'
+              : 'Agent editing requires WebMCP support and successful read-tool registration.'
+          }
+          onClick={mode === 'edit' ? disableAgentEditing : enableAgentEditing}
+        >
+          {mode === 'edit' ? (
+            <Pencil className="size-3" aria-hidden="true" />
+          ) : (
+            <ShieldCheck className="size-3" aria-hidden="true" />
+          )}
+          <span>
+            {mode === 'edit'
+              ? editRegistrationStatus === 'initializing'
+                ? 'Enabling…'
+                : 'Disable editing'
+              : 'Enable editing'}
           </span>
-        ) : null}
+        </button>
       </div>
 
       {import.meta.env.DEV ? (

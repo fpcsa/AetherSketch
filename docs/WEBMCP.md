@@ -16,9 +16,9 @@ await document.modelContext.registerTool(tool, {
 
 Aborting the registration signal unregisters the tool. AetherSketch does not invent `provideContext`, `unregisterTool`, or another compatibility API.
 
-## Agent review mode
+## Review Mode
 
-The current mode is **Agent review · read only**. Exactly four tools are registered:
+Review Mode is the default. Exactly four tools are registered and all four are read-only:
 
 ### `get_architecture`
 
@@ -98,6 +98,34 @@ Runs the same non-mutating simulation action used by the human UI. It returns st
 
 An unsupported target returns `INVALID_FAILURE_TARGET`.
 
+## Agent Edit Mode
+
+Only a human using the AetherSketch UI can enable Agent Edit Mode. Enabling it preserves the four read tools and dynamically registers exactly five narrowly scoped mutation tools:
+
+### `add_component`
+
+Adds one typed catalog component. The agent can provide `kind` plus optional name, region, availability zones, replicas, critical state, and kind-specific configuration overrides. Catalog defaults supply provider mapping, service, cost, and all omitted configuration. AetherSketch chooses an unoccupied canvas position; XY coordinates, IDs, metadata, cost, provider/service overrides, and lock state are not exposed.
+
+### `update_component`
+
+Updates one component by ID using an allowlist: name, region, availability zones, replicas, critical state, and kind-specific configuration. This is not arbitrary object patching. Zod validates configuration against the selected component's discriminated configuration schema. A locked component returns `COMPONENT_LOCKED` without changing Architecture IR.
+
+### `remove_component`
+
+Removes one unlocked component by ID. The existing domain action also removes its connected edges so the architecture cannot contain dangling references. Locked components return `COMPONENT_LOCKED`.
+
+### `connect_components`
+
+Creates a semantic connection from source component ID to target component ID with a required connection type and optional protocol and encryption state. Both endpoints must exist and self-connections fail with `INVALID_CONNECTION`.
+
+### `disconnect_components`
+
+Removes one connection by ID. Missing connections return `EDGE_NOT_FOUND`.
+
+All five mutations execute the existing Architecture store actions with `actor="agent"`. The canvas updates from the resulting IR, the affected item is selected/focused where appropriate, activity history records the agent, existing analysis becomes stale, and active simulation is cleared. The tools never mutate XYFlow objects directly.
+
+There is deliberately no `unlock_component`, `lock_component`, `set_constraints`, or generic arbitrary-action tool. Locks, constraints, and edit authorization are human controls.
+
 ## Results and errors
 
 Every callback returns one of these compact envelopes:
@@ -117,9 +145,11 @@ type ToolResult<T> =
     };
 ```
 
-Zod validates callback inputs as a defense-in-depth boundary in addition to the registered JSON Schema. Unknown or additional input properties produce `INVALID_INPUT`. Domain errors preserve actionable codes such as `COMPONENT_NOT_FOUND`, `INVALID_FAILURE_TARGET`, and `INVALID_ARCHITECTURE`. Invocation cancellation produces `EXECUTION_ABORTED`.
+Zod validates callback inputs as a defense-in-depth boundary in addition to the registered JSON Schema. Unknown or additional input properties produce `INVALID_INPUT`. Kind-incompatible configuration produces `INVALID_CONFIGURATION`. Domain errors preserve actionable codes such as `COMPONENT_LOCKED`, `COMPONENT_NOT_FOUND`, `EDGE_NOT_FOUND`, `INVALID_CONNECTION`, `INVALID_FAILURE_TARGET`, and `INVALID_ARCHITECTURE`. Invocation cancellation produces `EXECUTION_ABORTED`.
 
-All four tools declare the current supported annotations:
+A retained reference to a mutation tool cannot bypass authorization: tool execution checks Edit Mode before input parsing, yields once, and checks Edit Mode again immediately before the synchronous domain action. If the human disables editing while a call is in flight, it returns `EDIT_MODE_DISABLED` and performs no mutation.
+
+The four read tools declare:
 
 ```json
 {
@@ -130,20 +160,34 @@ All four tools declare the current supported annotations:
 
 Analysis and simulation update transient presentation state, but they do not mutate the Architecture IR, so they remain read-only in the architectural sense. Outputs come from validated application state rather than external or user-controlled web content.
 
+The five mutation tools declare `readOnlyHint: false` and `untrustedContentHint: false`.
+
+## Hard invariants and soft goals
+
+AetherSketch distinguishes deterministic domain invariants from human architecture goals:
+
+- **Hard invariants** are always enforced. Examples include valid kind-specific configuration, existing component/edge references, unique IDs, no self-connections, schema-valid Architecture IR, human locks, and current Edit Mode authorization.
+- **Soft goals** are evaluated by analysis rather than blocking every intermediate step. Budget, resilience/security targets, required region, Multi-AZ, and encryption-at-rest constraints may temporarily be unmet during a multi-step transformation. Mutation results mark analysis stale, and the final architecture can be evaluated with `analyze_architecture`.
+
+`CONSTRAINT_VIOLATION` is reserved for a future constraint explicitly classified as a hard guardrail; the current human constraints are goals and do not use it.
+
 ## Runtime lifecycle
 
 The application mounts a single WebMCP runtime boundary:
 
 1. If `document.modelContext.registerTool` is absent, status is **WebMCP Unavailable** and the human workspace continues normally.
 2. If the API is present, status changes to **WebMCP Initializing**.
-3. The four descriptors register concurrently through `document.modelContext.registerTool` with one owning `AbortSignal`.
+3. The four read descriptors register concurrently through `document.modelContext.registerTool` with one long-lived owning `AbortSignal`.
 4. When all registration promises resolve, status becomes **WebMCP Ready · 4 read tools**.
 5. A rejected registration produces **WebMCP Error** and exposes its message in development diagnostics.
-6. When the React runtime unmounts, it aborts the owning signal and therefore unregisters all four tools.
+6. When the human enables Agent Edit Mode, a second `AbortController` registers the five mutation descriptors. The UI reports **4 read tools · 5 edit tools** only after all five registrations resolve.
+7. Disabling Agent Edit Mode immediately revokes domain permission and aborts only the edit controller. The five mutation tools disappear, the four read-tool registrations and architecture changes remain, and the UI returns to Review Mode.
+8. Each new enable cycle creates one new edit controller. Effect cleanup aborts the previous controller, so repeated cycles cannot accumulate duplicate tools.
+9. When the React runtime unmounts, both owning signals are aborted.
 
 “Ready” means tools are registered on the page. It does not claim that ChatGPT or another agent is connected.
 
-In development, the bug icon beside the top-bar status opens a compact diagnostic panel containing the mode, registered names, last invocation, and last result or error. This panel is excluded from production builds.
+There is no invented `unregisterTool()` call. Teardown uses the actual registration `AbortSignal` lifecycle. In development, the bug icon beside the top-bar status opens a compact diagnostic panel containing mode, separate read/edit registrations, last invocation, and last result or error. This panel is excluded from production builds.
 
 ## Browser requirements and fallback
 
@@ -154,10 +198,14 @@ Unsupported browsers retain the complete human editor, deterministic analysis, s
 ## Testing with ChatGPT's in-app browser
 
 1. Start AetherSketch locally or open its deployed Cloudflare URL in a ChatGPT in-app browser that exposes WebMCP.
-2. Wait for the top and bottom indicators to show **WebMCP Ready · 4 read tools**.
+2. Wait for the top and bottom indicators to show **WebMCP Ready · Review Mode · 4 read tools · 0 edit tools**.
 3. Ask ChatGPT to use `get_architecture`, inspect a returned component ID, analyze a focus such as security, and simulate a component or availability-zone failure.
 4. Confirm that analysis opens the Analysis panel and simulation opens the Simulation panel with failed/degraded canvas styling.
-5. In a development build, open WebMCP diagnostics to inspect the exact last invocation and result.
+5. Lock a component and set any desired human constraints in the UI.
+6. Click **Enable editing**, confirm **Agent Editing Enabled · 4 read tools · 5 edit tools**, and ask ChatGPT to make a bounded change.
+7. Confirm the canvas and Agent activity entry update, and confirm an attempted update/removal of the locked component returns `COMPONENT_LOCKED`.
+8. Click **Disable editing**, confirm the edit tools disappear while read tools remain, and confirm existing architecture changes are retained.
+9. In a development build, open WebMCP diagnostics to inspect the exact last invocation and result.
 
 If the indicator stays **WebMCP Unavailable**, that browser surface does not currently expose the required API; continue using the human UI or test in a supported environment.
 

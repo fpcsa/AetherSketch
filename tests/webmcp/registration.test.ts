@@ -4,7 +4,9 @@ import {
   getDocumentModelContext,
   isWebMcpSupported,
   registerWebMcpReadTools,
+  registerWebMcpTools,
   type WebMcpRegistrationTarget,
+  WEBMCP_MUTATION_TOOL_NAMES,
   WEBMCP_READ_TOOL_NAMES,
 } from '../../src/webmcp';
 
@@ -81,5 +83,51 @@ describe('WebMCP registration boundary', () => {
       registerWebMcpReadTools(context, testTools(), controller),
     ).rejects.toThrow('duplicate tool');
     expect(controller.signal.aborted).toBe(true);
+  });
+
+  it('owns a five-tool edit group with a separate disposable signal', async () => {
+    const activeTools = new Set<string>();
+    const readController = new AbortController();
+    const editController = new AbortController();
+    const context: WebMcpRegistrationTarget = {
+      registerTool: vi.fn(
+        (
+          tool: WebMCP.ModelContextTool,
+          options?: WebMCP.ModelContextRegisterToolOptions,
+        ) => {
+          activeTools.add(tool.name);
+          options?.signal?.addEventListener('abort', () => {
+            activeTools.delete(tool.name);
+          });
+          return Promise.resolve();
+        },
+      ),
+    };
+    const readRegistration = await registerWebMcpTools(
+      context,
+      testTools(),
+      readController,
+    );
+    const editTools = WEBMCP_MUTATION_TOOL_NAMES.map((name) => ({
+      name,
+      description: `Test ${name}`,
+      execute: () => ({ ok: true }),
+    }));
+    const editRegistration = await registerWebMcpTools(
+      context,
+      editTools,
+      editController,
+    );
+
+    expect(activeTools).toEqual(
+      new Set([...WEBMCP_READ_TOOL_NAMES, ...WEBMCP_MUTATION_TOOL_NAMES]),
+    );
+    editRegistration.dispose();
+    expect(editController.signal.aborted).toBe(true);
+    expect(readController.signal.aborted).toBe(false);
+    expect(activeTools).toEqual(new Set(WEBMCP_READ_TOOL_NAMES));
+
+    readRegistration.dispose();
+    expect(activeTools.size).toBe(0);
   });
 });
