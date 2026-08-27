@@ -20,7 +20,7 @@ The Cloudflare Vite plugin runs the React client and Worker together in developm
 - `src/app` composes the root workspace route.
 - `src/components` owns small, presentation-focused workspace regions.
 - `src/architecture/model` defines the provider-neutral Architecture IR, strict runtime schemas, factories, and typed errors.
-- `src/architecture/catalog` defines AWS-first mappings and safe defaults for 21 typed component kinds, including provider-neutral serverless AI/LLM and agent concepts.
+- `src/architecture/catalog` defines safe defaults and optional AWS mappings for 21 typed component kinds, including provider-neutral serverless AI/LLM and agent concepts.
 - `src/architecture/analysis` contains pure validation, cost, score, constraint, and combined-analysis functions.
 - `src/architecture/simulation` contains pure component, availability-zone, and region failure simulation.
 - `src/architecture/serialization` is the schema-validated JSON boundary.
@@ -46,7 +46,7 @@ The XYFlow canvas is a rendering and interaction projection. Node positions are 
 
 ## Visual workspace
 
-Catalog entries drive the categorized component palette and typed node presentation. Custom nodes show the component name, AWS mapping, category, lock/critical markers, modeled region or zone count, and textual operational/degraded/failed status. Semantic connection types have distinct colors and dash treatments; simulation impact overrides them with an explicit impacted state.
+Catalog entries drive the categorized component palette and typed node presentation. A transient AWS/Generic selector controls whether provider mappings appear in the palette, nodes, and inspector without changing the Architecture IR. Custom nodes show the component name, optional AWS mapping, category, lock/critical markers, modeled region or zone count, and textual operational/degraded/failed status. Semantic connection types have distinct colors and dash treatments; simulation impact overrides them with an explicit impacted state.
 
 The AI palette category contains provider-neutral `serverless-ai` and `ai-agent` IR kinds. Their current AWS catalog mappings are Amazon Bedrock and Agents for Amazon Bedrock, while their typed configuration captures model modality, guardrails, private access, encryption, logging, orchestration, memory, and human approval independently of XYFlow.
 

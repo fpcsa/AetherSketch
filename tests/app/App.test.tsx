@@ -11,6 +11,7 @@ describe('AetherSketch application shell', () => {
   beforeEach(() => {
     useWorkspaceUiStore.setState({
       activePaletteCategory: 'network',
+      catalogDescriptionMode: 'aws',
       selectedComponentId: null,
       selectedConnectionId: null,
       activePanel: 'inspector',

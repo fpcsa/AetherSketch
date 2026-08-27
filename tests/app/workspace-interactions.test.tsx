@@ -19,6 +19,7 @@ import { getArchitectureTemplate } from '../../src/templates';
 function resetWorkspace() {
   useWorkspaceUiStore.setState({
     activePaletteCategory: 'network',
+    catalogDescriptionMode: 'aws',
     selectedComponentId: null,
     selectedConnectionId: null,
     activePanel: 'inspector',
@@ -199,6 +200,36 @@ describe('human architecture workspace', () => {
         humanApprovalRequired: false,
       },
     });
+  });
+
+  it('switches between AWS and generic service descriptions', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'AI' }));
+    const selector = screen.getByRole('combobox', {
+      name: 'Catalog service descriptions',
+    });
+    expect(selector).toHaveValue('aws');
+    expect(screen.getByText('Agents for Amazon Bedrock')).toBeVisible();
+
+    fireEvent.change(selector, { target: { value: 'generic' } });
+    expect(selector).toHaveValue('generic');
+    expect(screen.queryByText('Agents for Amazon Bedrock')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Add AI Agent' })).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add AI Agent' }));
+    expect(screen.queryByText('Agents for Amazon Bedrock')).toBeNull();
+    expect(screen.getByLabelText('AI Agent, Operational')).toBeInTheDocument();
+    expect(screen.getByText('ai-agent')).toBeVisible();
+
+    fireEvent.change(selector, { target: { value: 'aws' } });
+    expect(screen.getAllByText('Agents for Amazon Bedrock')).toHaveLength(2);
+    expect(
+      screen.getByText('Agents for Amazon Bedrock · ai-agent'),
+    ).toBeVisible();
+    expect(
+      screen.getByLabelText('AI Agent, Agents for Amazon Bedrock, Operational'),
+    ).toBeInTheDocument();
   });
 
   it('edits typed component properties and enforces locking visually', () => {

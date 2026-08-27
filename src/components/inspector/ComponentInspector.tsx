@@ -78,6 +78,9 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
   );
   const clearSelection = useWorkspaceUiStore((state) => state.clearSelection);
   const setNotice = useWorkspaceUiStore((state) => state.setNotice);
+  const catalogDescriptionMode = useWorkspaceUiStore(
+    (state) => state.catalogDescriptionMode,
+  );
   const catalog = getCatalogEntry(component.kind);
 
   const commit = (changes: ComponentUpdate) => {
@@ -107,7 +110,9 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
               {component.name}
             </p>
             <p className="mt-0.5 truncate text-[9px] text-slate-600">
-              {catalog.aws.displayName} · {component.kind}
+              {catalogDescriptionMode === 'aws'
+                ? `${catalog.aws.displayName} · ${component.kind}`
+                : component.kind}
             </p>
           </div>
           <span

@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import type { PaletteCategoryId } from '../components/palette/palette-categories';
 
 export type WorkspacePanel = 'inspector' | 'analysis' | 'simulation';
+export type CatalogDescriptionMode = 'aws' | 'generic';
 export type WorkspaceNotice = {
   kind: 'success' | 'error' | 'info';
   message: string;
@@ -10,6 +11,7 @@ export type WorkspaceNotice = {
 
 export type WorkspaceUiState = {
   activePaletteCategory: PaletteCategoryId;
+  catalogDescriptionMode: CatalogDescriptionMode;
   selectedComponentId: string | null;
   selectedConnectionId: string | null;
   activePanel: WorkspacePanel;
@@ -17,6 +19,7 @@ export type WorkspaceUiState = {
   activityOpen: boolean;
   notice: WorkspaceNotice | null;
   setActivePaletteCategory: (category: PaletteCategoryId) => void;
+  setCatalogDescriptionMode: (mode: CatalogDescriptionMode) => void;
   selectComponent: (componentId: string | null) => void;
   focusComponent: (componentId: string) => void;
   selectConnection: (connectionId: string | null) => void;
@@ -28,6 +31,7 @@ export type WorkspaceUiState = {
 
 export const useWorkspaceUiStore = create<WorkspaceUiState>((set) => ({
   activePaletteCategory: 'network',
+  catalogDescriptionMode: 'aws',
   selectedComponentId: null,
   selectedConnectionId: null,
   activePanel: 'inspector',
@@ -37,6 +41,8 @@ export const useWorkspaceUiStore = create<WorkspaceUiState>((set) => ({
 
   setActivePaletteCategory: (activePaletteCategory) =>
     set({ activePaletteCategory }),
+  setCatalogDescriptionMode: (catalogDescriptionMode) =>
+    set({ catalogDescriptionMode }),
   selectComponent: (selectedComponentId) =>
     set({ selectedComponentId, selectedConnectionId: null }),
   focusComponent: (selectedComponentId) =>

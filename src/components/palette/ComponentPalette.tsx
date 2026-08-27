@@ -13,6 +13,7 @@ import {
 import { componentCatalog, componentKinds } from '../../architecture/catalog';
 import type { ComponentKind } from '../../architecture/model';
 import { useArchitectureStore } from '../../stores/architecture-store';
+import type { CatalogDescriptionMode } from '../../stores/workspace-ui-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
 import { COMPONENT_DRAG_TYPE } from '../canvas/ArchitectureCanvas';
 import {
@@ -35,6 +36,12 @@ export function ComponentPalette() {
   );
   const setActiveCategory = useWorkspaceUiStore(
     (state) => state.setActivePaletteCategory,
+  );
+  const catalogDescriptionMode = useWorkspaceUiStore(
+    (state) => state.catalogDescriptionMode,
+  );
+  const setCatalogDescriptionMode = useWorkspaceUiStore(
+    (state) => state.setCatalogDescriptionMode,
   );
   const selectComponent = useWorkspaceUiStore((state) => state.focusComponent);
   const setActivePanel = useWorkspaceUiStore((state) => state.setActivePanel);
@@ -122,9 +129,28 @@ export function ComponentPalette() {
       </div>
 
       <div className="mx-3 mt-3 min-h-0 flex-1 overflow-auto border-t border-slate-800/80 py-2">
-        <p className="mb-1.5 text-[9px] uppercase tracking-[0.12em] text-slate-700">
-          AWS-first catalog
-        </p>
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <label
+            htmlFor="catalog-description-mode"
+            className="text-[9px] uppercase tracking-[0.12em] text-slate-700"
+          >
+            Service labels
+          </label>
+          <select
+            id="catalog-description-mode"
+            aria-label="Catalog service descriptions"
+            value={catalogDescriptionMode}
+            onChange={(event) =>
+              setCatalogDescriptionMode(
+                event.currentTarget.value as CatalogDescriptionMode,
+              )
+            }
+            className="h-6 border border-slate-800 bg-[#0a0f16] px-1.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-500 outline-none focus:border-cyan-400/70"
+          >
+            <option value="aws">AWS</option>
+            <option value="generic">Generic</option>
+          </select>
+        </div>
         <ul
           className="space-y-px"
           aria-label={`${selectedCategory.label} catalog`}
@@ -151,9 +177,11 @@ export function ComponentPalette() {
                   <span className="block truncate text-[10px] font-medium text-slate-400 group-hover:text-slate-200">
                     {entry.displayName}
                   </span>
-                  <span className="block truncate text-[9px] text-slate-700 group-hover:text-slate-500">
-                    {entry.aws.displayName}
-                  </span>
+                  {catalogDescriptionMode === 'aws' ? (
+                    <span className="block truncate text-[9px] text-slate-700 group-hover:text-slate-500">
+                      {entry.aws.displayName}
+                    </span>
+                  ) : null}
                 </span>
                 <Plus
                   className="size-3 text-slate-700 transition-colors group-hover:text-cyan-400"

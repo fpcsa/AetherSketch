@@ -2,6 +2,7 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { CircleAlert, LockKeyhole, ShieldAlert } from 'lucide-react';
 
 import { getCatalogEntry } from '../../architecture/catalog';
+import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
 import { getComponentVisual } from './component-visuals';
 import type { ArchitectureFlowNode } from './flow-types';
 
@@ -20,6 +21,9 @@ export function ArchitectureNode({
 }: NodeProps<ArchitectureFlowNode>) {
   const { component, simulationState } = data;
   const catalog = getCatalogEntry(component.kind);
+  const catalogDescriptionMode = useWorkspaceUiStore(
+    (state) => state.catalogDescriptionMode,
+  );
   const visual = getComponentVisual(component.kind);
   const Icon = visual.Icon;
   const statusLabel =
@@ -32,7 +36,7 @@ export function ArchitectureNode({
   return (
     <article
       className={`group relative min-h-[88px] w-[196px] border shadow-lg transition-[border-color,box-shadow,background-color] ${stateClasses[simulationState]} ${selected ? 'ring-2 ring-cyan-300/70 ring-offset-2 ring-offset-[#090d13]' : ''}`}
-      aria-label={`${component.name}, ${catalog.aws.displayName}, ${statusLabel}${component.locked ? ', locked' : ''}${component.critical ? ', critical' : ''}`}
+      aria-label={`${component.name}${catalogDescriptionMode === 'aws' ? `, ${catalog.aws.displayName}` : ''}, ${statusLabel}${component.locked ? ', locked' : ''}${component.critical ? ', critical' : ''}`}
       data-component-id={component.id}
       data-simulation-state={simulationState}
     >
@@ -69,9 +73,11 @@ export function ArchitectureNode({
               />
             ) : null}
           </div>
-          <p className="mt-0.5 truncate text-[9px] text-slate-500">
-            {catalog.aws.displayName}
-          </p>
+          {catalogDescriptionMode === 'aws' ? (
+            <p className="mt-0.5 truncate text-[9px] text-slate-500">
+              {catalog.aws.displayName}
+            </p>
+          ) : null}
         </div>
       </div>
 
