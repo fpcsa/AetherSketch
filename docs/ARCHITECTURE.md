@@ -27,6 +27,7 @@ The Cloudflare Vite plugin runs the React client and Worker together in developm
 - `src/stores/architecture-store.ts` owns the current Architecture IR and all domain mutations.
 - `src/stores/intelligence-store.ts` owns non-persisted analysis and simulation results.
 - `src/stores/workspace-ui-store.ts` separately owns selection, focus requests, open panels, notices, and other transient presentation state.
+- `src/stores/theme-store.ts` owns the independently persisted dark/light visual preference and applies it to the browser shell.
 - `src/templates` owns three validated starting architectures.
 - `src/utils` contains framework-independent helpers and validation schemas.
 - `worker` is isolated from React and currently exposes only service health.
@@ -41,7 +42,7 @@ Connections are semantic records with source and target component IDs, a connect
 
 The Zod schema version is currently `1`. Deserialization validates the complete graph before returning an Architecture, and failures use `INVALID_ARCHITECTURE` with structured issue details.
 
-The XYFlow canvas is a rendering and interaction projection. Node positions are initialized from the IR; transient drag state remains local to XYFlow and the final position commits through `moveComponent`. Adds, connections, deletion, and selection similarly route through domain or UI-store actions. XYFlow node and edge objects are never stored as the architecture domain model. UI selection, viewport state, and simulation overlays remain outside architectural undo history.
+The XYFlow canvas is a rendering and interaction projection. Node positions are initialized from the IR; transient drag state remains local to XYFlow and the final position commits through `moveComponent`. Adds, connections, deletion, and selection similarly route through domain or UI-store actions. Selection flows one way from explicit node/edge interactions into the UI store and back into the visual projection; it is not mirrored through XYFlow's aggregate selection listener. This prevents a newly connected target node and its new edge from repeatedly overwriting each other's selected state. New-edge selection is also deferred until XYFlow completes the connection gesture. XYFlow node and edge objects are never stored as the architecture domain model. UI selection, viewport state, theme, and simulation overlays remain outside architectural undo history.
 
 ## Visual workspace
 
@@ -51,7 +52,7 @@ The right workspace panel switches between typed inspection, analysis, and simul
 
 Constraints remain human-authored IR data. Their UI presents stale state after edits and explicit deterministic results after analysis. Findings can select and focus affected nodes or edges. Failure simulation remains a transient overlay and never writes to project persistence or history.
 
-The top bar owns template/reset, validated JSON import/export, undo/redo, and activity history entry points. Invalid imports are rejected before `loadArchitecture`, preserving the current project.
+The top bar owns template/reset, validated JSON import/export, undo/redo, activity history, and the persisted dark/light theme toggle. Invalid imports are rejected before `loadArchitecture`, preserving the current project. A canvas-local error boundary also keeps the surrounding workspace and saved Architecture IR available if a third-party graph renderer fails.
 
 ## Intelligence boundary
 

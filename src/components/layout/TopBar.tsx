@@ -2,8 +2,10 @@ import {
   Boxes,
   Download,
   History,
+  Moon,
   Redo2,
   RotateCcw,
+  Sun,
   Undo2,
   Upload,
 } from 'lucide-react';
@@ -21,6 +23,7 @@ import {
 } from '../../templates';
 import { useArchitectureStore } from '../../stores/architecture-store';
 import { useIntelligenceStore } from '../../stores/intelligence-store';
+import { useThemeStore } from '../../stores/theme-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
 import { WebMcpStatus } from '../agent/WebMcpStatus';
 
@@ -90,6 +93,8 @@ export function TopBar() {
   const activityOpen = useWorkspaceUiStore((state) => state.activityOpen);
   const setActivityOpen = useWorkspaceUiStore((state) => state.setActivityOpen);
   const setNotice = useWorkspaceUiStore((state) => state.setNotice);
+  const theme = useThemeStore((state) => state.theme);
+  const toggleTheme = useThemeStore((state) => state.toggleTheme);
 
   const metadataTemplateId = architecture.metadata.templateId;
   const currentTemplate =
@@ -297,6 +302,23 @@ export function TopBar() {
               {Math.min(activityCount, 99)}
             </span>
           ) : null}
+        </button>
+
+        <button
+          type="button"
+          className="ml-1 flex h-8 items-center gap-1.5 border border-slate-800 bg-[#0d121a] px-2 text-[9px] font-medium text-slate-500 transition-colors hover:border-slate-700 hover:bg-slate-800 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80"
+          onClick={toggleTheme}
+          aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          title={`Current theme: ${theme}. Switch to ${theme === 'dark' ? 'light' : 'dark'} mode.`}
+        >
+          {theme === 'dark' ? (
+            <Moon className="size-3.5" aria-hidden="true" />
+          ) : (
+            <Sun className="size-3.5" aria-hidden="true" />
+          )}
+          <span className="max-[1260px]:sr-only">
+            {theme === 'dark' ? 'Dark' : 'Light'}
+          </span>
         </button>
 
         <div className="ml-1.5">

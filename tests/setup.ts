@@ -61,6 +61,11 @@ Object.defineProperty(HTMLElement.prototype, 'getBoundingClientRect', {
   },
 });
 
+Object.defineProperty(document, 'elementFromPoint', {
+  configurable: true,
+  value: () => null,
+});
+
 afterEach(() => {
   cleanup();
 });

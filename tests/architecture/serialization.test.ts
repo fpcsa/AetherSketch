@@ -21,6 +21,28 @@ describe('architecture serialization', () => {
     expect(restored.schemaVersion).toBe(ARCHITECTURE_SCHEMA_VERSION);
   });
 
+  it('round-trips trigger connections as a supported semantic type', () => {
+    const architecture = getArchitectureTemplate('serverless-api');
+    const connection = architecture.connections[0];
+    expect(connection).toBeDefined();
+    if (!connection) {
+      return;
+    }
+
+    const architectureWithTrigger = {
+      ...architecture,
+      connections: [
+        { ...connection, type: 'trigger' as const },
+        ...architecture.connections.slice(1),
+      ],
+    };
+
+    expect(
+      deserializeArchitecture(serializeArchitecture(architectureWithTrigger))
+        .connections[0]?.type,
+    ).toBe('trigger');
+  });
+
   it('fails safely with a structured error for invalid JSON', () => {
     expect(() => deserializeArchitecture('{not valid json')).toThrowError(
       expect.objectContaining({

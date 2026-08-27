@@ -4,16 +4,9 @@ import type {
   ArchitectureConnection,
   ConnectionType,
 } from '../../architecture/model';
+import { CONNECTION_TYPES } from '../../architecture/model';
 import { useArchitectureStore } from '../../stores/architecture-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
-
-const connectionTypes: readonly ConnectionType[] = [
-  'request',
-  'async',
-  'data',
-  'replication',
-  'management',
-];
 
 const inputClass =
   'mt-1 h-8 w-full border border-slate-700 bg-[#0a0f16] px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/70';
@@ -71,7 +64,7 @@ export function ConnectionInspector({ connection }: ConnectionInspectorProps) {
               })
             }
           >
-            {connectionTypes.map((type) => (
+            {CONNECTION_TYPES.map((type) => (
               <option key={type} value={type}>
                 {type}
               </option>

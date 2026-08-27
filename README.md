@@ -25,6 +25,7 @@ This repository currently implements the Prompt 4 visual-workspace milestone:
 - editable constraints with deterministic status, interactive findings, and canvas focus;
 - component, availability-zone, and region simulation controls with failed/degraded canvas states;
 - templates, a blank workspace, validated JSON import/export, demo reset, and activity history;
+- a persisted dark/light workspace theme with theme-aware canvas controls, nodes, edges, and panels;
 - live estimated cost, resilience, and security indicators throughout the shell;
 - real WebMCP feature detection without tool registration or fake connectivity;
 - Cloudflare Workers + static-assets integration with `GET /api/health`;
@@ -62,7 +63,7 @@ tests/                  Component and Worker tests
 docs/                   Architecture decisions and boundaries
 ```
 
-The provider-neutral Architecture IR lives outside React and XYFlow. The architecture store owns that IR and exposes domain actions; React subscribes to it without mutating raw state. XYFlow keeps transient drag and viewport state, then commits architectural changes through store actions. Analysis and simulation are pure projections of an Architecture snapshot and live in a separate, non-persisted intelligence store. Selection, panel, notice, and palette state remain in a separate UI store.
+The provider-neutral Architecture IR lives outside React and XYFlow. The architecture store owns that IR and exposes domain actions; React subscribes to it without mutating raw state. XYFlow keeps transient drag and viewport state, then commits architectural changes through store actions. Analysis and simulation are pure projections of an Architecture snapshot and live in a separate, non-persisted intelligence store. Selection, panel, notice, and palette state remain in a separate UI store; the visual theme is persisted independently and never enters architectural history.
 
 ### Deterministic intelligence
 
@@ -81,7 +82,7 @@ These values are transparent design feedback, not an AWS quote, SLA, penetration
 
 An architecture includes its identity, description, provider context, region, schema version, revision, typed components, semantic connections, human constraints, and metadata. Components are a discriminated union keyed by `kind`, so an RDS-style SQL database cannot accidentally receive queue configuration, for example.
 
-Connections describe architectural meaning (`request`, `async`, `data`, `replication`, or `management`) rather than only visual lines. Zod validation rejects duplicate IDs, dangling endpoints, self-connections, malformed component configuration, and unsupported schema versions.
+Connections describe architectural meaning (`request`, `async`, `data`, `replication`, `trigger`, or `management`) rather than only visual lines. Zod validation rejects duplicate IDs, dangling endpoints, self-connections, malformed component configuration, and unsupported schema versions.
 
 ### Store API
 

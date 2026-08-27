@@ -1,5 +1,4 @@
 import {
-  applyNodeChanges,
   Background,
   BackgroundVariant,
   Controls,
@@ -9,9 +8,9 @@ import {
   ReactFlowProvider,
   useReactFlow,
   type Connection,
-  type NodeChange,
+  type EdgeMouseHandler,
   type NodeMouseHandler,
-  type OnSelectionChangeParams,
+  type OnNodeDrag,
 } from '@xyflow/react';
 import { Boxes, Grid3X3, MousePointer2 } from 'lucide-react';
 import {
@@ -27,6 +26,7 @@ import { componentKinds } from '../../architecture/catalog';
 import type { ComponentKind, ConnectionType } from '../../architecture/model';
 import { useArchitectureStore } from '../../stores/architecture-store';
 import { useIntelligenceStore } from '../../stores/intelligence-store';
+import { useThemeStore } from '../../stores/theme-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
 import { ArchitectureEdge } from './ArchitectureEdge';
 import { ArchitectureNode } from './ArchitectureNode';
@@ -37,13 +37,31 @@ export const COMPONENT_DRAG_TYPE = 'application/aethersketch-component';
 
 const nodeTypes = { 'architecture-component': ArchitectureNode };
 const edgeTypes = { 'architecture-connection': ArchitectureEdge };
+const deleteKeys = ['Backspace', 'Delete'];
+const snapGrid: [number, number] = [16, 16];
+const initialFitViewOptions = { padding: 0.28, maxZoom: 1 };
+const defaultEdgeOptions = { type: 'architecture-connection' as const };
 
-const connectionColors: Record<ConnectionType, string> = {
-  request: '#38bdf8',
-  async: '#fbbf24',
-  data: '#34d399',
-  replication: '#a78bfa',
-  management: '#94a3b8',
+const connectionColors: Record<
+  'dark' | 'light',
+  Record<ConnectionType, string>
+> = {
+  dark: {
+    request: '#38bdf8',
+    async: '#fbbf24',
+    data: '#34d399',
+    replication: '#a78bfa',
+    trigger: '#f472b6',
+    management: '#94a3b8',
+  },
+  light: {
+    request: '#0284c7',
+    async: '#b45309',
+    data: '#059669',
+    replication: '#7c3aed',
+    trigger: '#be185d',
+    management: '#475569',
+  },
 };
 
 function ArchitectureCanvasInner() {
@@ -60,6 +78,7 @@ function ArchitectureCanvasInner() {
     (state) => state.disconnectComponents,
   );
   const simulation = useIntelligenceStore((state) => state.simulation);
+  const theme = useThemeStore((state) => state.theme);
   const selectedComponentId = useWorkspaceUiStore(
     (state) => state.selectedComponentId,
   );
@@ -74,10 +93,12 @@ function ArchitectureCanvasInner() {
   const clearSelection = useWorkspaceUiStore((state) => state.clearSelection);
   const setActivePanel = useWorkspaceUiStore((state) => state.setActivePanel);
   const setNotice = useWorkspaceUiStore((state) => state.setNotice);
-  const { screenToFlowPosition, fitView, getNode } = useReactFlow<
-    ArchitectureFlowNode,
-    ArchitectureFlowEdge
-  >();
+  const {
+    screenToFlowPosition,
+    fitView,
+    getNode,
+    setNodes: setFlowNodes,
+  } = useReactFlow<ArchitectureFlowNode, ArchitectureFlowEdge>();
   const draggingRef = useRef(false);
 
   const projectedNodes = useMemo<ArchitectureFlowNode[]>(
@@ -108,13 +129,13 @@ function ArchitectureCanvasInner() {
       }),
     [architecture.components, selectedComponentId, simulation],
   );
-  const [nodes, setNodes] = useState(projectedNodes);
+  const [initialNodes] = useState(projectedNodes);
 
   useEffect(() => {
     if (!draggingRef.current) {
-      setNodes(projectedNodes);
+      setFlowNodes(projectedNodes);
     }
-  }, [projectedNodes]);
+  }, [projectedNodes, setFlowNodes]);
 
   const edges = useMemo<ArchitectureFlowEdge[]>(
     () =>
@@ -131,14 +152,18 @@ function ArchitectureCanvasInner() {
           data: { connection, impacted },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: impacted ? '#fb7185' : connectionColors[connection.type],
+            color: impacted
+              ? theme === 'dark'
+                ? '#fb7185'
+                : '#e11d48'
+              : connectionColors[theme][connection.type],
             width: 14,
             height: 14,
           },
           ariaLabel: `${connection.type} connection${connection.protocol ? ` using ${connection.protocol}` : ''}`,
         };
       }),
-    [architecture.connections, selectedConnectionId, simulation],
+    [architecture.connections, selectedConnectionId, simulation, theme],
   );
 
   useEffect(() => {
@@ -156,33 +181,12 @@ function ArchitectureCanvasInner() {
     }
   }, [fitView, focusRequest, getNode, selectedComponentId]);
 
-  const onNodesChange = useCallback(
-    (changes: NodeChange<ArchitectureFlowNode>[]) => {
-      setNodes((current) => applyNodeChanges(changes, current));
-    },
-    [],
-  );
-
   const handleNodeClick: NodeMouseHandler<ArchitectureFlowNode> = useCallback(
     (_event, node) => {
       selectComponent(node.id);
       setActivePanel('inspector');
     },
     [selectComponent, setActivePanel],
-  );
-
-  const handleSelectionChange = useCallback(
-    ({
-      nodes: selectedNodes,
-      edges: selectedEdges,
-    }: OnSelectionChangeParams<ArchitectureFlowNode, ArchitectureFlowEdge>) => {
-      if (selectedNodes[0]) {
-        selectComponent(selectedNodes[0].id);
-      } else if (selectedEdges[0]) {
-        selectConnection(selectedEdges[0].id);
-      }
-    },
-    [selectComponent, selectConnection],
   );
 
   const handleConnect = useCallback(
@@ -198,8 +202,13 @@ function ArchitectureCanvasInner() {
           protocol: 'HTTPS',
           encrypted: true,
         });
-        selectConnection(connectionId);
-        setActivePanel('inspector');
+        // Let XYFlow finish cancelling the active gesture before changing its
+        // controlled selection. Selecting synchronously can invalidate the
+        // connection overlay while its pointer-up cleanup is still running.
+        window.requestAnimationFrame(() => {
+          selectConnection(connectionId);
+          setActivePanel('inspector');
+        });
       } catch (error) {
         setNotice({
           kind: 'error',
@@ -230,6 +239,42 @@ function ArchitectureCanvasInner() {
       setActivePanel('inspector');
     },
     [addComponent, screenToFlowPosition, selectComponent, setActivePanel],
+  );
+
+  const handleEdgeClick: EdgeMouseHandler<ArchitectureFlowEdge> = useCallback(
+    (_event, edge) => {
+      selectConnection(edge.id);
+      setActivePanel('inspector');
+    },
+    [selectConnection, setActivePanel],
+  );
+
+  const handleNodeDragStart = useCallback(() => {
+    draggingRef.current = true;
+  }, []);
+
+  const handleNodeDragStop: OnNodeDrag<ArchitectureFlowNode> = useCallback(
+    (_event, node) => {
+      draggingRef.current = false;
+      moveComponent(node.id, node.position);
+    },
+    [moveComponent],
+  );
+
+  const handleEdgesDelete = useCallback(
+    (deletedEdges: ArchitectureFlowEdge[]) => {
+      deletedEdges.forEach((edge) => disconnectComponents(edge.id));
+      clearSelection();
+    },
+    [clearSelection, disconnectComponents],
+  );
+
+  const handleNodesDelete = useCallback(
+    (deletedNodes: ArchitectureFlowNode[]) => {
+      deletedNodes.forEach((node) => removeComponent(node.id));
+      clearSelection();
+    },
+    [clearSelection, removeComponent],
   );
 
   return (
@@ -275,53 +320,37 @@ function ArchitectureCanvasInner() {
         onDragOver={(event) => event.preventDefault()}
       >
         <ReactFlow<ArchitectureFlowNode, ArchitectureFlowEdge>
-          nodes={nodes}
+          defaultNodes={initialNodes}
           edges={edges}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          onNodesChange={onNodesChange}
           onNodeClick={handleNodeClick}
-          onEdgeClick={(_event, edge) => {
-            selectConnection(edge.id);
-            setActivePanel('inspector');
-          }}
-          onNodeDragStart={() => {
-            draggingRef.current = true;
-          }}
-          onNodeDragStop={(_event, node) => {
-            draggingRef.current = false;
-            moveComponent(node.id, node.position);
-          }}
-          onEdgesDelete={(deletedEdges) => {
-            deletedEdges.forEach((edge) => disconnectComponents(edge.id));
-            clearSelection();
-          }}
-          onNodesDelete={(deletedNodes) => {
-            deletedNodes.forEach((node) => removeComponent(node.id));
-            clearSelection();
-          }}
+          onEdgeClick={handleEdgeClick}
+          onNodeDragStart={handleNodeDragStart}
+          onNodeDragStop={handleNodeDragStop}
+          onEdgesDelete={handleEdgesDelete}
+          onNodesDelete={handleNodesDelete}
           onConnect={handleConnect}
-          onSelectionChange={handleSelectionChange}
           onPaneClick={clearSelection}
-          deleteKeyCode={['Backspace', 'Delete']}
+          deleteKeyCode={deleteKeys}
           selectionKeyCode="Shift"
           multiSelectionKeyCode="Shift"
           fitView
-          fitViewOptions={{ padding: 0.28, maxZoom: 1 }}
+          fitViewOptions={initialFitViewOptions}
           minZoom={0.25}
           maxZoom={1.8}
           snapToGrid
-          snapGrid={[16, 16]}
+          snapGrid={snapGrid}
           proOptions={{ hideAttribution: true }}
-          colorMode="dark"
-          defaultEdgeOptions={{ type: 'architecture-connection' }}
+          colorMode={theme}
+          defaultEdgeOptions={defaultEdgeOptions}
           aria-label="Interactive architecture diagram"
         >
           <Background
             variant={BackgroundVariant.Dots}
             gap={16}
             size={1}
-            color="#273448"
+            color={theme === 'dark' ? '#273448' : '#cbd5e1'}
           />
           <Controls
             position="bottom-left"
@@ -336,12 +365,16 @@ function ArchitectureCanvasInner() {
               const component = (node as ArchitectureFlowNode).data.component;
               return getComponentVisual(component.kind).accent;
             }}
-            maskColor="rgba(4, 7, 11, 0.72)"
-            bgColor="#0b0f15"
+            maskColor={
+              theme === 'dark'
+                ? 'rgba(4, 7, 11, 0.72)'
+                : 'rgba(226, 232, 240, 0.72)'
+            }
+            bgColor={theme === 'dark' ? '#0b0f15' : '#f8fafc'}
             aria-label="Architecture minimap"
           />
 
-          {nodes.length === 0 ? (
+          {architecture.components.length === 0 ? (
             <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center">
               <div className="border border-dashed border-slate-700 bg-[#0b0f15]/90 px-8 py-7 text-center shadow-xl">
                 <Boxes

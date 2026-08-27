@@ -11,8 +11,16 @@ export type DeploymentEnvironment = 'development' | 'staging' | 'production';
 export type ComponentCategory =
   'network' | 'compute' | 'data' | 'integration' | 'platform';
 
-export type ConnectionType =
-  'request' | 'async' | 'data' | 'replication' | 'management';
+export const CONNECTION_TYPES = [
+  'request',
+  'async',
+  'data',
+  'replication',
+  'trigger',
+  'management',
+] as const;
+
+export type ConnectionType = (typeof CONNECTION_TYPES)[number];
 
 export type Actor = 'human' | 'agent' | 'system';
 

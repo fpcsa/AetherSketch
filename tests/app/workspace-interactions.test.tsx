@@ -5,12 +5,14 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from '../../src/app/App';
 import { serializeArchitecture } from '../../src/architecture/serialization';
 import { useArchitectureStore } from '../../src/stores/architecture-store';
 import { useIntelligenceStore } from '../../src/stores/intelligence-store';
+import { THEME_STORAGE_KEY, useThemeStore } from '../../src/stores/theme-store';
 import { useWorkspaceUiStore } from '../../src/stores/workspace-ui-store';
 import { getArchitectureTemplate } from '../../src/templates';
 
@@ -32,6 +34,7 @@ function resetWorkspace() {
   });
   useIntelligenceStore.getState().clearSimulation();
   useIntelligenceStore.getState().runAnalysis();
+  useThemeStore.getState().setTheme('dark');
 }
 
 describe('human architecture workspace', () => {
@@ -161,7 +164,7 @@ describe('human architecture workspace', () => {
 
     fireEvent.change(
       screen.getByRole('combobox', { name: 'Connection type' }),
-      { target: { value: 'replication' } },
+      { target: { value: 'trigger' } },
     );
     fireEvent.click(
       screen.getByRole('checkbox', { name: 'Encrypted transport' }),
@@ -173,7 +176,57 @@ describe('human architecture workspace', () => {
         .architecture.connections.find(
           (connection) => connection.id === 'ecommerce-edge-4',
         ),
-    ).toMatchObject({ type: 'replication', encrypted: false });
+    ).toMatchObject({ type: 'trigger', encrypted: false });
+  });
+
+  it('connects canvas handles without blanking the workspace', async () => {
+    render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    );
+    const connectionCount =
+      useArchitectureStore.getState().architecture.connections.length;
+
+    fireEvent.click(
+      screen.getByLabelText('Connect from Public Application Load Balancer'),
+    );
+    fireEvent.click(screen.getByLabelText('Connect into Orders Database'));
+
+    await waitFor(() =>
+      expect(
+        useArchitectureStore.getState().architecture.connections,
+      ).toHaveLength(connectionCount + 1),
+    );
+    expect(
+      screen.getByRole('heading', { name: 'Architecture Canvas' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText('Public Application Load Balancer').length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText('Orders Database').length).toBeGreaterThan(0);
+    await waitFor(() =>
+      expect(screen.getAllByText('Connection').length).toBeGreaterThan(0),
+    );
+  });
+
+  it('switches between persisted dark and light workspace themes', () => {
+    render(<App />);
+
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
+    expect(document.querySelector('.react-flow')).toHaveClass('dark');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Switch to light mode' }),
+    );
+
+    expect(document.documentElement).toHaveAttribute('data-theme', 'light');
+    expect(document.querySelector('[data-theme="light"]')).toBeInTheDocument();
+    expect(document.querySelector('.react-flow')).toHaveClass('light');
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
+    expect(
+      screen.getByRole('button', { name: 'Switch to dark mode' }),
+    ).toBeInTheDocument();
   });
 
   it('stores constraints and presents their deterministic evaluation', () => {

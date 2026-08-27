@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import {
   ARCHITECTURE_SCHEMA_VERSION,
+  CONNECTION_TYPES,
   type ActivityEntry,
   type Architecture,
   type ArchitectureComponent,
@@ -321,7 +322,7 @@ export const architectureConnectionSchema = z
     id: idSchema,
     source: idSchema,
     target: idSchema,
-    type: z.enum(['request', 'async', 'data', 'replication', 'management']),
+    type: z.enum(CONNECTION_TYPES),
     protocol: z.string().trim().min(1).max(64).optional(),
     encrypted: z.boolean(),
     critical: z.boolean(),
