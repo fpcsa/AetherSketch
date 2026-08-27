@@ -20,7 +20,7 @@ The Cloudflare Vite plugin runs the React client and Worker together in developm
 - `src/app` composes the root workspace route.
 - `src/components` owns small, presentation-focused workspace regions.
 - `src/architecture/model` defines the provider-neutral Architecture IR, strict runtime schemas, factories, and typed errors.
-- `src/architecture/catalog` defines AWS-first mappings and safe defaults for the 19 MVP component kinds.
+- `src/architecture/catalog` defines AWS-first mappings and safe defaults for 21 typed component kinds, including provider-neutral serverless AI/LLM and agent concepts.
 - `src/architecture/analysis` contains pure validation, cost, score, constraint, and combined-analysis functions.
 - `src/architecture/simulation` contains pure component, availability-zone, and region failure simulation.
 - `src/architecture/serialization` is the schema-validated JSON boundary.
@@ -47,6 +47,8 @@ The XYFlow canvas is a rendering and interaction projection. Node positions are 
 ## Visual workspace
 
 Catalog entries drive the categorized component palette and typed node presentation. Custom nodes show the component name, AWS mapping, category, lock/critical markers, modeled region or zone count, and textual operational/degraded/failed status. Semantic connection types have distinct colors and dash treatments; simulation impact overrides them with an explicit impacted state.
+
+The AI palette category contains provider-neutral `serverless-ai` and `ai-agent` IR kinds. Their current AWS catalog mappings are Amazon Bedrock and Agents for Amazon Bedrock, while their typed configuration captures model modality, guardrails, private access, encryption, logging, orchestration, memory, and human approval independently of XYFlow.
 
 The right workspace panel switches between typed inspection, analysis, and simulation. Component configuration fields are generated from the discriminated IR configuration, while known enum properties use bounded selectors. Locked components disable architectural fields and deletion until explicitly unlocked. Connections have a dedicated inspector for type, protocol, encryption, and criticality.
 

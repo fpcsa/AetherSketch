@@ -75,6 +75,46 @@ function componentMultipliers(
         Math.max(0.5, component.configuration.memoryMb / 512),
       );
       break;
+    case 'serverless-ai': {
+      const modalityMultipliers = {
+        text: 1,
+        multimodal: 1.45,
+        embedding: 0.65,
+      };
+      addMultiplier(
+        multipliers,
+        'AI_MODALITY',
+        `${component.configuration.modality} model workload`,
+        modalityMultipliers[component.configuration.modality],
+      );
+      addMultiplier(
+        multipliers,
+        'AI_GUARDRAILS',
+        'Managed AI guardrails',
+        component.configuration.guardrailsEnabled ? 1.05 : 1,
+      );
+      break;
+    }
+    case 'ai-agent': {
+      const orchestrationMultipliers = {
+        'single-agent': 1,
+        supervisor: 1.6,
+        collaborator: 1.3,
+      };
+      addMultiplier(
+        multipliers,
+        'AGENT_ORCHESTRATION',
+        `${component.configuration.orchestrationMode} orchestration`,
+        orchestrationMultipliers[component.configuration.orchestrationMode],
+      );
+      addMultiplier(
+        multipliers,
+        'AGENT_MEMORY',
+        'Managed agent memory',
+        component.configuration.memoryEnabled ? 1.1 : 1,
+      );
+      break;
+    }
     case 'sql-database': {
       const sizeMultipliers = { small: 0.65, medium: 1, large: 1.85 };
       addMultiplier(

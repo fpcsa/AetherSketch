@@ -5,6 +5,7 @@ export const paletteCategoryIds = [
   'compute',
   'data',
   'integration',
+  'ai',
   'platform',
 ] as const satisfies readonly ComponentCategory[];
 
@@ -36,6 +37,11 @@ export const paletteCategories: readonly PaletteCategory[] = [
     id: 'integration',
     label: 'Integration',
     description: 'Queues, events, and asynchronous workflows',
+  },
+  {
+    id: 'ai',
+    label: 'AI',
+    description: 'Foundation models and autonomous agent orchestration',
   },
   {
     id: 'platform',

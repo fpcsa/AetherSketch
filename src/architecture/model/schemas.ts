@@ -203,6 +203,41 @@ const componentSchemas = [
   z
     .object({
       ...componentBaseFields,
+      kind: z.literal('serverless-ai'),
+      configuration: z
+        .object({
+          modelId: z.string().trim().min(1).max(240),
+          modality: z.enum(['text', 'multimodal', 'embedding']),
+          guardrailsEnabled: z.boolean(),
+          privateAccess: z.boolean(),
+          encrypted: z.boolean(),
+          dataLogging: z.boolean(),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...componentBaseFields,
+      kind: z.literal('ai-agent'),
+      configuration: z
+        .object({
+          orchestrationMode: z.enum([
+            'single-agent',
+            'supervisor',
+            'collaborator',
+          ]),
+          memoryEnabled: z.boolean(),
+          humanApprovalRequired: z.boolean(),
+          guardrailsEnabled: z.boolean(),
+          encrypted: z.boolean(),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...componentBaseFields,
       kind: z.literal('sql-database'),
       configuration: z
         .object({

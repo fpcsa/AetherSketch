@@ -5,6 +5,7 @@ import {
   ArchitectureDomainError,
   validateArchitecture,
 } from '../../src/architecture/model';
+import { createComponentFromCatalog } from '../../src/architecture/catalog';
 import {
   deserializeArchitecture,
   serializeArchitecture,
@@ -41,6 +42,52 @@ describe('architecture serialization', () => {
       deserializeArchitecture(serializeArchitecture(architectureWithTrigger))
         .connections[0]?.type,
     ).toBe('trigger');
+  });
+
+  it('round-trips typed AI components without losing configuration', () => {
+    const architecture = getArchitectureTemplate('ecommerce-production');
+    const context = {
+      provider: architecture.provider.provider,
+      region: architecture.region,
+    };
+    const model = createComponentFromCatalog(
+      {
+        id: 'serialization-ai-model',
+        kind: 'serverless-ai',
+        configuration: { modality: 'multimodal' },
+      },
+      context,
+    );
+    const agent = createComponentFromCatalog(
+      {
+        id: 'serialization-ai-agent',
+        kind: 'ai-agent',
+        configuration: { orchestrationMode: 'supervisor' },
+      },
+      context,
+    );
+    const restored = deserializeArchitecture(
+      serializeArchitecture({
+        ...architecture,
+        components: [...architecture.components, model, agent],
+      }),
+    );
+
+    const restoredModel = restored.components.find(
+      (component) => component.id === model.id,
+    );
+    const restoredAgent = restored.components.find(
+      (component) => component.id === agent.id,
+    );
+
+    expect(restoredModel?.kind).toBe('serverless-ai');
+    if (restoredModel?.kind === 'serverless-ai') {
+      expect(restoredModel.configuration.modality).toBe('multimodal');
+    }
+    expect(restoredAgent?.kind).toBe('ai-agent');
+    if (restoredAgent?.kind === 'ai-agent') {
+      expect(restoredAgent.configuration.orchestrationMode).toBe('supervisor');
+    }
   });
 
   it('fails safely with a structured error for invalid JSON', () => {

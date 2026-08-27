@@ -9,7 +9,7 @@ import { architectureComponentSchema } from '../../src/architecture/model';
 
 describe('component catalog', () => {
   it('defines all supported MVP component kinds with useful defaults', () => {
-    expect(componentKinds).toHaveLength(19);
+    expect(componentKinds).toHaveLength(21);
     expect(new Set(componentKinds)).toEqual(
       new Set([
         'internet',
@@ -22,6 +22,8 @@ describe('component catalog', () => {
         'container-service',
         'serverless-function',
         'worker',
+        'serverless-ai',
+        'ai-agent',
         'sql-database',
         'nosql-database',
         'cache',

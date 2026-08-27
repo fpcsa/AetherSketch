@@ -1,4 +1,5 @@
 import {
+  BrainCircuit,
   CloudCog,
   Database,
   Network,
@@ -36,6 +37,12 @@ export const categoryVisuals = {
     label: 'Integration',
     accent: '#fbbf24',
     className: 'text-amber-300 bg-amber-400/10 border-amber-400/20',
+  },
+  ai: {
+    Icon: BrainCircuit,
+    label: 'AI',
+    accent: '#f472b6',
+    className: 'text-pink-300 bg-pink-400/10 border-pink-400/20',
   },
   platform: {
     Icon: CloudCog,

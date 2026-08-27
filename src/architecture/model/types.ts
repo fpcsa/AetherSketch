@@ -9,7 +9,7 @@ export type CloudProvider = 'aws' | 'azure' | 'gcp' | 'cloudflare' | 'generic';
 export type DeploymentEnvironment = 'development' | 'staging' | 'production';
 
 export type ComponentCategory =
-  'network' | 'compute' | 'data' | 'integration' | 'platform';
+  'network' | 'compute' | 'data' | 'integration' | 'ai' | 'platform';
 
 export const CONNECTION_TYPES = [
   'request',
@@ -67,6 +67,21 @@ export type ComponentConfigurationMap = {
   worker: {
     runtime: 'edge';
     compatibilityDate?: string;
+  };
+  'serverless-ai': {
+    modelId: string;
+    modality: 'text' | 'multimodal' | 'embedding';
+    guardrailsEnabled: boolean;
+    privateAccess: boolean;
+    encrypted: boolean;
+    dataLogging: boolean;
+  };
+  'ai-agent': {
+    orchestrationMode: 'single-agent' | 'supervisor' | 'collaborator';
+    memoryEnabled: boolean;
+    humanApprovalRequired: boolean;
+    guardrailsEnabled: boolean;
+    encrypted: boolean;
   };
   'sql-database': {
     engine: 'postgresql' | 'mysql';

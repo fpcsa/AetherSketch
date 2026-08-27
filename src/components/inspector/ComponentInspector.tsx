@@ -33,6 +33,12 @@ const configurationOptions: Partial<
   },
   'container-service': { launchType: ['fargate', 'ec2'] },
   worker: { runtime: ['edge'] },
+  'serverless-ai': {
+    modality: ['text', 'multimodal', 'embedding'],
+  },
+  'ai-agent': {
+    orchestrationMode: ['single-agent', 'supervisor', 'collaborator'],
+  },
   'sql-database': {
     engine: ['postgresql', 'mysql'],
     size: ['small', 'medium', 'large'],

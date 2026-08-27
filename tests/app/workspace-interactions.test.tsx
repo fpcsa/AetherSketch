@@ -122,6 +122,85 @@ describe('human architecture workspace', () => {
     ).toBe(false);
   });
 
+  it('adds and configures serverless AI and agent components', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'AI' }));
+    expect(
+      screen.getByText('Foundation models and autonomous agent orchestration'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Add Serverless AI / LLM' }),
+    );
+    const serverlessAi = useArchitectureStore
+      .getState()
+      .architecture.components.find(
+        (component) => component.kind === 'serverless-ai',
+      );
+    expect(serverlessAi).toMatchObject({
+      service: 'bedrock-runtime',
+      configuration: {
+        modality: 'text',
+        guardrailsEnabled: true,
+        privateAccess: true,
+        encrypted: true,
+      },
+    });
+    expect(screen.getByText('Amazon Bedrock · serverless-ai')).toBeVisible();
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Modality' }), {
+      target: { value: 'multimodal' },
+    });
+    expect(
+      useArchitectureStore
+        .getState()
+        .architecture.components.find(
+          (component) => component.id === serverlessAi?.id,
+        ),
+    ).toMatchObject({ configuration: { modality: 'multimodal' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add AI Agent' }));
+    const agent = useArchitectureStore
+      .getState()
+      .architecture.components.find(
+        (component) => component.kind === 'ai-agent',
+      );
+    expect(agent).toMatchObject({
+      service: 'bedrock-agent',
+      configuration: {
+        orchestrationMode: 'single-agent',
+        memoryEnabled: true,
+        humanApprovalRequired: true,
+        guardrailsEnabled: true,
+        encrypted: true,
+      },
+    });
+    expect(
+      screen.getByText('Agents for Amazon Bedrock · ai-agent'),
+    ).toBeVisible();
+
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Orchestration Mode' }),
+      { target: { value: 'supervisor' } },
+    );
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'Human Approval Required' }),
+    );
+    expect(
+      useArchitectureStore
+        .getState()
+        .architecture.components.find(
+          (component) => component.id === agent?.id,
+        ),
+    ).toMatchObject({
+      configuration: {
+        orchestrationMode: 'supervisor',
+        humanApprovalRequired: false,
+      },
+    });
+  });
+
   it('edits typed component properties and enforces locking visually', () => {
     render(<App />);
 

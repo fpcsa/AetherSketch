@@ -12,7 +12,7 @@ This repository currently implements the Prompt 4 visual-workspace milestone:
 
 - a compact, desktop-first architecture workspace built on XYFlow;
 - a strongly typed, provider-neutral Architecture IR with an explicit schema version;
-- an AWS-first catalog for 19 MVP component kinds;
+- an AWS-first catalog for 21 typed component kinds, including provider-neutral AI/LLM and agent concepts;
 - semantic connections, human constraints, component locks, and typed domain errors;
 - an actor-aware Zustand store with domain actions, undo/redo, activity history, and localStorage persistence;
 - Ecommerce Production, Serverless API, and Event Processing templates;

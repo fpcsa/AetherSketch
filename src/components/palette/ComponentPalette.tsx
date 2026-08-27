@@ -1,4 +1,5 @@
 import {
+  BrainCircuit,
   Boxes,
   ChevronRight,
   CloudCog,
@@ -24,6 +25,7 @@ const categoryIcons = {
   compute: ServerCog,
   data: Database,
   integration: RadioTower,
+  ai: BrainCircuit,
   platform: CloudCog,
 } satisfies Record<PaletteCategoryId, typeof Network>;
 

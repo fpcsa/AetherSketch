@@ -18,6 +18,8 @@ const computeKinds = new Set<ComponentKind>([
   'container-service',
   'serverless-function',
   'worker',
+  'serverless-ai',
+  'ai-agent',
 ]);
 
 const provisionedComputeKinds = new Set<ComponentKind>([
@@ -81,6 +83,8 @@ export function encryptionAtRestState(
     case 'object-storage':
     case 'queue':
     case 'secrets-manager':
+    case 'serverless-ai':
+    case 'ai-agent':
       return component.configuration.encrypted;
     default:
       return null;
@@ -127,6 +131,8 @@ export function isComponentRedundant(
     case 'identity':
     case 'secrets-manager':
     case 'monitoring':
+    case 'serverless-ai':
+    case 'ai-agent':
       return true;
     default:
       return false;

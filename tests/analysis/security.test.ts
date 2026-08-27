@@ -119,4 +119,28 @@ describe('deterministic security scoring', () => {
       ]),
     );
   });
+
+  it('applies encryption-at-rest checks to managed AI components', () => {
+    const architecture = getArchitectureTemplate('ecommerce-production');
+    const model = createComponentFromCatalog(
+      {
+        id: 'unencrypted-ai-model',
+        kind: 'serverless-ai',
+        configuration: { encrypted: false },
+      },
+      { provider: 'aws', region: architecture.region },
+    );
+    const result = analyzeSecurity({
+      ...architecture,
+      components: [...architecture.components, model],
+    });
+
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        code: 'UNENCRYPTED_DATA_SERVICE',
+        componentId: model.id,
+        severity: 'high',
+      }),
+    );
+  });
 });

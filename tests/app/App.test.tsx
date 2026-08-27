@@ -63,6 +63,7 @@ describe('AetherSketch application shell', () => {
       'Compute',
       'Data',
       'Integration',
+      'AI',
       'Platform',
     ]) {
       expect(
