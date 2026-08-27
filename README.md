@@ -8,7 +8,7 @@ ChatGPT is the copilot. AetherSketch does **not** embed a chatbot, call an LLM A
 
 ## Current status
 
-This repository currently implements the Prompt 4 visual-workspace milestone:
+This repository currently implements the Prompt 5 WebMCP read-tools milestone:
 
 - a compact, desktop-first architecture workspace built on XYFlow;
 - a strongly typed, provider-neutral Architecture IR with an explicit schema version;
@@ -27,11 +27,12 @@ This repository currently implements the Prompt 4 visual-workspace milestone:
 - templates, a blank workspace, validated JSON import/export, demo reset, and activity history;
 - a persisted dark/light workspace theme with theme-aware canvas controls, nodes, edges, and panels;
 - live estimated cost, resilience, and security indicators throughout the shell;
-- real WebMCP feature detection without tool registration or fake connectivity;
+- real imperative WebMCP integration through `document.modelContext` with four compact, read-only architecture tools;
+- truthful unavailable, initializing, ready, and registration-error lifecycle status plus development-only diagnostics;
 - Cloudflare Workers + static-assets integration with `GET /api/health`;
 - strict TypeScript, ESLint, Prettier, Vitest, and domain/store/component/Worker tests.
 
-Actual WebMCP tool registration is intentionally deferred to the next milestone. The regular human workspace remains fully usable when WebMCP is unavailable.
+The current WebMCP mode is **Agent review · read only**. It exposes `get_architecture`, `inspect_component`, `analyze_architecture`, and `simulate_failure`. Agent-triggered analysis and simulation operate through the same stores as the human UI and visibly open their panels and canvas overlays. The regular human workspace remains fully usable when WebMCP is unavailable.
 
 ## Architecture
 
@@ -47,7 +48,7 @@ src/
     simulation/         Deterministic component, AZ, and region failures
   app/                  Application composition
   components/
-    agent/              Truthful WebMCP feature detection
+    agent/              Truthful WebMCP lifecycle and diagnostics UI
     analysis/           Interactive score and findings panel
     canvas/             XYFlow projection, custom nodes, semantic edges
     inspector/          Typed properties and editable constraints
@@ -58,6 +59,7 @@ src/
   templates/            Validated architecture starting points
   styles/               Tailwind entry point and workspace styling
   utils/                Shared runtime schemas
+  webmcp/               Detection, schemas, tools, errors, registration, lifecycle
 worker/                 Cloudflare Worker entry point
 tests/                  Component and Worker tests
 docs/                   Architecture decisions and boundaries
@@ -109,6 +111,14 @@ The single-AZ compute and database tiers are intentional weaknesses that make th
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the current boundaries and planned extension points.
 
+### WebMCP read mode
+
+Supported browser environments receive four tools registered with the current imperative `document.modelContext.registerTool` API. Every descriptor has a strict JSON Schema, `readOnlyHint: true`, and `untrustedContentHint: false`. Inputs are also validated with Zod, domain failures become structured tool errors, and registration is owned and cleaned up by an `AbortSignal`.
+
+WebMCP is a progressive enhancement: “Ready” means four tools are registered on the current page, never that an agent is connected. Unsupported browsers show “Unavailable” while retaining the full human workspace. No extension, MCP server, embedded chatbot, or compatibility API is required by AetherSketch.
+
+See [docs/WEBMCP.md](docs/WEBMCP.md) for exact schemas, output behavior, lifecycle details, current API/type-package notes, and ChatGPT/Chrome testing instructions.
+
 ## Technology stack
 
 - React and TypeScript
@@ -120,6 +130,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the current boundaries and 
 - `@xyflow/react` for the interactive projection (never used as domain state)
 - lucide-react
 - Vitest and Testing Library
+- `webmcp-types` for the current imperative browser API surface
 
 ## Local development
 
@@ -174,7 +185,8 @@ AetherSketch currently has:
 - no embedded assistant or chat surface;
 - no authentication or database;
 - no cloud credentials or infrastructure deployment capability;
-- no fake `document.modelContext` or mock WebMCP registration;
+- no production `document.modelContext` polyfill, compatibility shim, or mock registration;
+- no MCP server or browser-extension dependency;
 - no LLM, probabilistic inference, or opaque scoring inside the architecture engines.
 
 ## License

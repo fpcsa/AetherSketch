@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document describes the Prompt 4 Architecture IR, deterministic intelligence layer, and complete human visual workspace. WebMCP tools remain a later milestone.
+This document describes the Prompt 5 Architecture IR, deterministic intelligence layer, complete human visual workspace, and WebMCP read integration.
 
 ## Runtime shape
 
@@ -11,6 +11,8 @@ The application is one Cloudflare deployment unit:
 ```text
 Browser navigation ──> Cloudflare static assets ──> React workspace shell
 Browser /api/* call ─> Cloudflare Worker ─────────> deterministic API response
+Browser agent ───────> document.modelContext ─────> WebMCP read adapter
+                                                    └─> shared stores/domain engines
 ```
 
 The Cloudflare Vite plugin runs the React client and Worker together in development and produces their deployable output together at build time. SPA fallback is configured through Wrangler while `/api/*` is explicitly routed to the Worker.
@@ -30,6 +32,7 @@ The Cloudflare Vite plugin runs the React client and Worker together in developm
 - `src/stores/theme-store.ts` owns the independently persisted dark/light visual preference and applies it to the browser shell.
 - `src/templates` owns three validated starting architectures.
 - `src/utils` contains framework-independent helpers and validation schemas.
+- `src/webmcp` isolates feature detection, strict schemas, compact output shaping, domain-error translation, tool execution, imperative registration, lifecycle state, and cleanup.
 - `worker` is isolated from React and currently exposes only service health.
 
 ## Domain boundary
@@ -90,7 +93,13 @@ Template getters return cloned, validated architectures so mutations cannot alte
 
 ## WebMCP boundary
 
-No WebMCP API is registered in this milestone. The visible status performs only real feature detection for `document.modelContext` and reports Ready or Unavailable. A later `src/webmcp` layer will be added only after the current official API has been verified, and it will call the same domain operations as the human UI.
+The integration uses the verified imperative `document.modelContext.registerTool` API and official `webmcp-types` declarations. It registers exactly four read tools in Agent review mode: `get_architecture`, `inspect_component`, `analyze_architecture`, and `simulate_failure`.
+
+Tool descriptors, JSON-compatible input schemas, runtime Zod validation, compact result projection, and structured error conversion live outside React. The runtime injects store-backed dependencies into those pure descriptors. `get_architecture` and `inspect_component` read current Architecture IR directly; `analyze_architecture` and `simulate_failure` call the intelligence store's existing domain actions and switch the existing right-side panel through the UI store. No analysis or simulation business logic is duplicated.
+
+Feature detection requires a callable `document.modelContext.registerTool`. Supported pages progress from Initializing to Ready only after all registration promises resolve. One `AbortController` owns all registrations and unregisters them on runtime cleanup. Unsupported browsers continue as complete human workspaces. Status never equates API readiness with agent connectivity.
+
+All tools are annotated read-only. Analysis and simulation update only transient intelligence/presentation state and never mutate Architecture IR or history. See [`WEBMCP.md`](WEBMCP.md) for schemas, outputs, lifecycle, structured errors, testing, and current draft/type-package differences.
 
 ## Dependency rationale
 
@@ -102,3 +111,4 @@ No WebMCP API is registered in this milestone. The visible status performs only 
 - `@xyflow/react` renders the interactive graph while the provider-neutral IR remains authoritative.
 - lucide-react provides accessible, consistent interface iconography.
 - Vitest and Testing Library verify both rendered application structure and Worker behavior.
+- `webmcp-types` supplies the verified global TypeScript surface for `document.modelContext` without a runtime compatibility layer.

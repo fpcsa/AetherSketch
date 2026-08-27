@@ -15,6 +15,7 @@ import { useIntelligenceStore } from '../../src/stores/intelligence-store';
 import { THEME_STORAGE_KEY, useThemeStore } from '../../src/stores/theme-store';
 import { useWorkspaceUiStore } from '../../src/stores/workspace-ui-store';
 import { getArchitectureTemplate } from '../../src/templates';
+import { useWebMcpStore } from '../../src/webmcp';
 
 function resetWorkspace() {
   useWorkspaceUiStore.setState({
@@ -41,6 +42,7 @@ function resetWorkspace() {
 describe('human architecture workspace', () => {
   beforeEach(() => {
     delete (document as Document & { modelContext?: unknown }).modelContext;
+    useWebMcpStore.getState().reset();
     resetWorkspace();
   });
 
@@ -470,15 +472,11 @@ describe('human architecture workspace', () => {
     );
   });
 
-  it('shows activity actors and detects WebMCP readiness without registering tools', () => {
-    Object.defineProperty(document, 'modelContext', {
-      configurable: true,
-      value: {},
-    });
+  it('shows activity actors without implying WebMCP connectivity', () => {
     useArchitectureStore.getState().renameArchitecture('Observed Platform');
     render(<App />);
 
-    expect(screen.getAllByText('Ready')).toHaveLength(2);
+    expect(screen.getAllByText('Unavailable')).toHaveLength(2);
     fireEvent.click(screen.getByRole('button', { name: 'Activity history' }));
     expect(
       screen.getByRole('heading', { name: 'Activity & history' }),
@@ -487,5 +485,129 @@ describe('human architecture workspace', () => {
       screen.getByText('Renamed architecture to “Observed Platform”'),
     ).toBeInTheDocument();
     expect(screen.getByText('Human')).toBeInTheDocument();
+  });
+
+  it('shows WebMCP initializing until all four registrations complete', async () => {
+    const registrationResolvers: Array<() => void> = [];
+    Object.defineProperty(document, 'modelContext', {
+      configurable: true,
+      value: {
+        registerTool: vi.fn(
+          () =>
+            new Promise<void>((resolve) => {
+              registrationResolvers.push(resolve);
+            }),
+        ),
+      },
+    });
+    render(<App />);
+
+    expect(screen.getAllByText('Initializing')).toHaveLength(2);
+    expect(registrationResolvers).toHaveLength(4);
+
+    await act(async () => {
+      registrationResolvers.forEach((resolve) => resolve());
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(screen.getAllByText('Ready')).toHaveLength(2));
+    expect(screen.getAllByText('4 read tools')).toHaveLength(2);
+  });
+
+  it('registers live tools whose analysis and simulation update the same page', async () => {
+    const registeredTools = new Map<string, WebMCP.ModelContextTool>();
+    const registrationSignals: AbortSignal[] = [];
+    Object.defineProperty(document, 'modelContext', {
+      configurable: true,
+      value: {
+        registerTool: vi.fn(
+          (
+            tool: WebMCP.ModelContextTool,
+            options?: WebMCP.ModelContextRegisterToolOptions,
+          ) => {
+            registeredTools.set(tool.name, tool);
+            if (options?.signal) {
+              registrationSignals.push(options.signal);
+              options.signal.addEventListener('abort', () => {
+                registeredTools.delete(tool.name);
+              });
+            }
+            return Promise.resolve();
+          },
+        ),
+      },
+    });
+    const architectureBefore = serializeArchitecture(
+      useArchitectureStore.getState().architecture,
+    );
+    const { unmount } = render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    );
+
+    await waitFor(() => expect(screen.getAllByText('Ready')).toHaveLength(2));
+    expect([...registeredTools.keys()]).toEqual([
+      'get_architecture',
+      'inspect_component',
+      'analyze_architecture',
+      'simulate_failure',
+    ]);
+
+    await act(async () => {
+      await registeredTools
+        .get('analyze_architecture')!
+        .execute(
+          { focus: 'security' },
+          { signal: new AbortController().signal },
+        );
+    });
+    expect(useWorkspaceUiStore.getState().activePanel).toBe('analysis');
+    expect(useIntelligenceStore.getState().analysis?.focus).toBe('security');
+    expect(screen.getByRole('button', { name: 'Analyze' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.getByText('Public web path has no WAF')).toBeVisible();
+
+    await act(async () => {
+      await registeredTools
+        .get('simulate_failure')!
+        .execute(
+          { scope: 'component', target: 'ecommerce-postgresql' },
+          { signal: new AbortController().signal },
+        );
+    });
+    expect(useWorkspaceUiStore.getState().activePanel).toBe('simulation');
+    expect(useIntelligenceStore.getState().simulation).toMatchObject({
+      scope: 'component',
+      target: 'ecommerce-postgresql',
+      status: 'unavailable',
+    });
+    expect(
+      document.querySelector(
+        '[data-component-id="ecommerce-postgresql"][data-simulation-state="failed"]',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('simulation-edge-count')).toBeVisible();
+    expect(
+      serializeArchitecture(useArchitectureStore.getState().architecture),
+    ).toBe(architectureBefore);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Toggle WebMCP diagnostics' }),
+    );
+    expect(
+      screen.getByRole('region', { name: 'WebMCP diagnostics' }),
+    ).toBeVisible();
+    expect(screen.getByText('Agent review · read only')).toBeVisible();
+    expect(
+      screen.getByText(/get_architecture, inspect_component/),
+    ).toBeVisible();
+    expect(screen.getAllByText(/simulate_failure/).length).toBeGreaterThan(1);
+
+    unmount();
+    expect(registrationSignals).toHaveLength(8);
+    expect(registrationSignals.every((signal) => signal.aborted)).toBe(true);
+    expect(registeredTools.size).toBe(0);
   });
 });

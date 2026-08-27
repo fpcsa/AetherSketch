@@ -6,9 +6,12 @@ import { useArchitectureStore } from '../../src/stores/architecture-store';
 import { useIntelligenceStore } from '../../src/stores/intelligence-store';
 import { useWorkspaceUiStore } from '../../src/stores/workspace-ui-store';
 import { getArchitectureTemplate } from '../../src/templates';
+import { useWebMcpStore } from '../../src/webmcp';
 
 describe('AetherSketch application shell', () => {
   beforeEach(() => {
+    delete (document as Document & { modelContext?: unknown }).modelContext;
+    useWebMcpStore.getState().reset();
     useWorkspaceUiStore.setState({
       activePaletteCategory: 'network',
       catalogDescriptionMode: 'aws',

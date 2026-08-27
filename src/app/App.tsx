@@ -7,6 +7,7 @@ import { TopBar } from '../components/layout/TopBar';
 import { WorkspaceNotice } from '../components/layout/WorkspaceNotice';
 import { ComponentPalette } from '../components/palette/ComponentPalette';
 import { useThemeStore } from '../stores/theme-store';
+import { WebMcpRuntime } from '../webmcp';
 
 export function App() {
   const theme = useThemeStore((state) => state.theme);
@@ -16,6 +17,7 @@ export function App() {
       className="relative flex h-dvh min-h-[640px] min-w-[1000px] flex-col overflow-hidden bg-[#080b10] text-slate-200"
       data-theme={theme}
     >
+      <WebMcpRuntime />
       <a
         href="#architecture-canvas"
         className="sr-only z-50 rounded bg-cyan-400 px-3 py-2 font-semibold text-slate-950 focus:not-sr-only focus:absolute focus:left-3 focus:top-3"
