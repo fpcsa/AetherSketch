@@ -287,7 +287,9 @@ describe('human architecture workspace', () => {
     expect(selector).toHaveValue('aws');
     expect(screen.getByText('Agents for Amazon Bedrock')).toBeVisible();
 
+    const beforeLabels = useArchitectureStore.getState().architecture;
     fireEvent.change(selector, { target: { value: 'generic' } });
+    expect(useArchitectureStore.getState().architecture).toBe(beforeLabels);
     expect(selector).toHaveValue('generic');
     expect(screen.queryByText('Agents for Amazon Bedrock')).toBeNull();
     expect(screen.getByRole('button', { name: 'Add AI Agent' })).toBeVisible();
@@ -296,6 +298,26 @@ describe('human architecture workspace', () => {
     expect(screen.queryByText('Agents for Amazon Bedrock')).toBeNull();
     expect(screen.getByLabelText('AI Agent, Operational')).toBeInTheDocument();
     expect(screen.getByText('ai-agent')).toBeVisible();
+    expect(
+      screen.getByRole('contentinfo', { name: 'Architecture status' }),
+    ).not.toHaveTextContent(/AWS|Amazon/);
+
+    for (const category of [
+      'Network',
+      'Compute',
+      'Data',
+      'Integration',
+      'AI',
+      'Platform',
+    ]) {
+      fireEvent.click(screen.getByRole('button', { name: category }));
+      expect(
+        screen.getByRole('list', { name: `${category} catalog` }),
+      ).not.toHaveTextContent(
+        /AWS|Amazon|CloudFront|Bedrock|Lambda|DynamoDB|ElastiCache|CloudWatch|Cognito/,
+      );
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'AI' }));
 
     fireEvent.change(selector, { target: { value: 'aws' } });
     expect(screen.getAllByText('Agents for Amazon Bedrock')).toHaveLength(2);
@@ -305,6 +327,78 @@ describe('human architecture workspace', () => {
     expect(
       screen.getByLabelText('AI Agent, Agents for Amazon Bedrock, Operational'),
     ).toBeInTheDocument();
+  });
+
+  it('adds and edits gateways with complete labels in both description modes', () => {
+    render(<App />);
+    const selector = screen.getByRole('combobox', {
+      name: 'Catalog service descriptions',
+    });
+    for (const name of ['Internet Gateway', 'Virtual Private Gateway']) {
+      const existingComponents =
+        useArchitectureStore.getState().architecture.components;
+      fireEvent.click(screen.getByRole('button', { name: `Add ${name}` }));
+      expect(
+        screen.getByLabelText(`${name}, AWS ${name}, Operational`),
+      ).toBeInTheDocument();
+      const added = useArchitectureStore
+        .getState()
+        .architecture.components.find((component) => component.name === name)!;
+      for (const existing of existingComponents) {
+        expect(
+          Math.abs(added.position.x - existing.position.x) >= 216 ||
+            Math.abs(added.position.y - existing.position.y) >= 128,
+        ).toBe(true);
+      }
+    }
+    const asn = screen.getByLabelText('Private ASN');
+    fireEvent.change(asn, { target: { value: '65000' } });
+    fireEvent.blur(asn);
+    expect(
+      useArchitectureStore
+        .getState()
+        .architecture.components.find(
+          (component) => component.kind === 'virtual-private-gateway',
+        ),
+    ).toMatchObject({ configuration: { asn: 65000 } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lock component' }));
+    expect(screen.getByLabelText('Private ASN')).toBeDisabled();
+    fireEvent.change(selector, { target: { value: 'generic' } });
+    expect(screen.queryByText('AWS Virtual Private Gateway')).toBeNull();
+    expect(screen.queryByText(/AWS Virtual Private Gateway ·/)).toBeNull();
+    expect(
+      screen.getByLabelText('Virtual Private Gateway, Operational, locked'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Internet Gateway, Operational'),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Private ASN')).toHaveValue(65000);
+  });
+
+  it('uses generic container option labels without changing stored configuration', () => {
+    render(<App />);
+    fireEvent.click(screen.getByText('Storefront API'));
+    const before = useArchitectureStore.getState().architecture;
+    const selector = screen.getByRole('combobox', {
+      name: 'Catalog service descriptions',
+    });
+    fireEvent.change(selector, { target: { value: 'generic' } });
+    const launchType = screen.getByRole('combobox', { name: 'Launch Type' });
+    expect(launchType).toHaveTextContent('Managed serverless');
+    expect(launchType).not.toHaveTextContent(/fargate|ec2/i);
+    expect(useArchitectureStore.getState().architecture).toBe(before);
+    fireEvent.change(launchType, { target: { value: 'ec2' } });
+    expect(
+      useArchitectureStore
+        .getState()
+        .architecture.components.find(
+          (component) => component.id === 'ecommerce-ecs',
+        ),
+    ).toMatchObject({ configuration: { launchType: 'ec2' } });
+    fireEvent.change(selector, { target: { value: 'aws' } });
+    expect(screen.getByRole('combobox', { name: 'Launch Type' })).toHaveValue(
+      'ec2',
+    );
   });
 
   it('edits typed component properties and enforces locking visually', () => {
@@ -363,6 +457,67 @@ describe('human architecture workspace', () => {
         ),
     ).toMatchObject({ type: 'trigger', encrypted: false });
   });
+
+  it.each([
+    ['events-edge-1', 'AWS Events', 'Events'],
+    ['events-edge-2', 'SQS', 'Queue messaging'],
+  ])(
+    'uses generic protocol labels for %s without rewriting the connection',
+    async (id, service, generic) => {
+      // XYFlow needs measured nodes before it renders edge accessibility labels.
+      vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(
+        216,
+      );
+      vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(
+        104,
+      );
+      useArchitectureStore.setState({
+        architecture: getArchitectureTemplate('event-processing'),
+      });
+      useWorkspaceUiStore.getState().selectConnection(id);
+      render(<App />);
+      const selector = screen.getByRole('combobox', {
+        name: 'Catalog service descriptions',
+      });
+      expect(screen.getByLabelText('Protocol')).toHaveValue(service);
+      await waitFor(() =>
+        expect(
+          screen.getByLabelText(`async connection using ${service}`),
+        ).toBeInTheDocument(),
+      );
+      const before = useArchitectureStore.getState().architecture;
+      fireEvent.change(selector, { target: { value: 'generic' } });
+      const protocol = screen.getByLabelText('Protocol');
+      expect(protocol).toHaveValue(generic);
+      await waitFor(() =>
+        expect(
+          screen.getByLabelText(`async connection using ${generic}`),
+        ).toBeInTheDocument(),
+      );
+      expect(protocol).not.toHaveAttribute(
+        'placeholder',
+        expect.stringMatching(/AWS|SQS/),
+      );
+      expect(
+        screen.queryByLabelText(`async connection using ${service}`),
+      ).toBeNull();
+      fireEvent.blur(protocol);
+      expect(useArchitectureStore.getState().architecture).toBe(before);
+      fireEvent.change(selector, { target: { value: 'aws' } });
+      expect(screen.getByLabelText('Protocol')).toHaveValue(service);
+      fireEvent.change(selector, { target: { value: 'generic' } });
+      fireEvent.change(screen.getByLabelText('Protocol'), {
+        target: { value: 'Custom event transport' },
+      });
+      fireEvent.blur(screen.getByLabelText('Protocol'));
+      expect(
+        useArchitectureStore
+          .getState()
+          .architecture.connections.find((connection) => connection.id === id)
+          ?.protocol,
+      ).toBe('Custom event transport');
+    },
+  );
 
   it('connects canvas handles without blanking the workspace', async () => {
     render(

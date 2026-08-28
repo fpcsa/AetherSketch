@@ -28,6 +28,10 @@ export type ComponentConfigurationMap = {
   internet: {
     entryType: 'public-internet';
   };
+  'internet-gateway': Record<string, never>;
+  'virtual-private-gateway': {
+    asn: number;
+  };
   dns: {
     routingPolicy: 'simple' | 'latency' | 'failover';
     zoneType: 'public' | 'private';

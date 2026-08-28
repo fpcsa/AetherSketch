@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createComponentFromCatalog } from '../../src/architecture/catalog';
 import { estimateArchitectureCost } from '../../src/architecture/analysis';
+import { createEmptyArchitecture } from '../../src/architecture/model';
 import { getArchitectureTemplate } from '../../src/templates';
 import { getHardenedEcommerceArchitecture } from '../helpers/architecture-fixtures';
 
@@ -25,7 +26,23 @@ describe('deterministic cost estimation', () => {
         }),
       ]),
     );
-    expect(result.disclaimer).toContain('not an AWS billing quote');
+    expect(result.disclaimer).toContain('not a cloud billing quote');
+  });
+
+  it('keeps gateway resource estimates separate from unmodeled connectivity charges', () => {
+    const architecture = createEmptyArchitecture({ name: 'Gateway cost' });
+    const context = { provider: 'aws' as const, region: architecture.region };
+    const components = (
+      ['internet-gateway', 'virtual-private-gateway'] as const
+    ).map((kind) => createComponentFromCatalog({ kind }, context));
+    const result = estimateArchitectureCost({ ...architecture, components });
+    expect(result.totalEstimatedMonthlyCost).toBe(0);
+    expect(result.components[0]?.explanation).toContain(
+      'Traffic charges are excluded',
+    );
+    expect(result.components[1]?.explanation).toContain(
+      'VPN connections, dedicated links, and traffic charges are excluded',
+    );
   });
 
   it('applies explicit replica and Multi-AZ multipliers', () => {

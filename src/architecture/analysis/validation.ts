@@ -17,6 +17,7 @@ function componentMap(architecture: Architecture) {
 function isDirectPublicSource(component: ArchitectureComponent): boolean {
   return (
     component.kind === 'internet' ||
+    component.kind === 'internet-gateway' ||
     component.kind === 'cdn' ||
     (component.kind === 'load-balancer' &&
       component.configuration.scheme === 'internet-facing')

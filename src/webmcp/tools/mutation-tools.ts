@@ -1,11 +1,11 @@
 import type { z } from 'zod';
 
+import { nextAutomaticPosition } from '../../architecture/catalog';
 import type {
   AddComponentInput,
   Architecture,
   ArchitectureComponent,
   ArchitectureConnection,
-  ComponentPosition,
   ComponentUpdate,
   ConnectComponentsInput,
 } from '../../architecture/model';
@@ -89,36 +89,6 @@ function assertEditMode(isEditModeEnabled: () => boolean): void {
       'Agent editing is disabled. Ask the human to enable Agent Edit Mode.',
     );
   }
-}
-
-function nextAutomaticPosition(architecture: Architecture): ComponentPosition {
-  const origin = { x: 48, y: 48 };
-  const spacing = { x: 304, y: 208 };
-  const columns = 3;
-
-  for (let index = 0; index < 1000; index += 1) {
-    const candidate = {
-      x: origin.x + (index % columns) * spacing.x,
-      y: origin.y + Math.floor(index / columns) * spacing.y,
-    };
-    const occupied = architecture.components.some(
-      (component) =>
-        Math.abs(component.position.x - candidate.x) < 248 &&
-        Math.abs(component.position.y - candidate.y) < 160,
-    );
-    if (!occupied) {
-      return candidate;
-    }
-  }
-
-  return {
-    x: origin.x,
-    y:
-      Math.max(
-        origin.y,
-        ...architecture.components.map((component) => component.position.y),
-      ) + spacing.y,
-  };
 }
 
 function componentSummary(component: ArchitectureComponent) {

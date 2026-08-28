@@ -56,6 +56,7 @@ const inputClass =
   'mt-1 h-8 w-full border border-slate-700 bg-[#0a0f16] px-2 text-[12px] text-slate-200 outline-none transition-colors placeholder:text-slate-700 focus:border-cyan-400/70 disabled:cursor-not-allowed disabled:opacity-45';
 
 function formatPropertyName(name: string): string {
+  if (name === 'asn') return 'Private ASN';
   return name
     .replace(/([a-z])([A-Z])/g, '$1 $2')
     .replace(/^./, (character) => character.toUpperCase());
@@ -106,10 +107,10 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
       <div className="border-b border-slate-800/80 px-3 py-3">
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] font-semibold text-slate-200">
+            <p className="break-words text-[13px] font-semibold text-slate-200">
               {component.name}
             </p>
-            <p className="mt-0.5 truncate text-[11px] text-slate-600">
+            <p className="mt-0.5 break-words text-[11px] leading-4 text-slate-600">
               {catalogDescriptionMode === 'aws'
                 ? `${catalog.aws.displayName} · ${component.kind}`
                 : component.kind}
@@ -204,6 +205,18 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
             Service configuration
           </p>
           <div className="space-y-2.5">
+            {component.kind === 'internet-gateway' ? (
+              <p className="text-[12px] leading-5 text-slate-500">
+                Model internet routing with connections. This gateway has no
+                additional service settings; traffic charges are excluded.
+              </p>
+            ) : null}
+            {component.kind === 'virtual-private-gateway' ? (
+              <p className="text-[12px] leading-5 text-slate-500">
+                Private ASN: 64512–65534 or 4200000000–4294967294. VPN
+                connections, dedicated links, and traffic charges are excluded.
+              </p>
+            ) : null}
             {Object.entries(component.configuration).map(([key, value]) => {
               const label = formatPropertyName(key);
               const options = configurationOptions[component.kind]?.[key];
@@ -243,7 +256,13 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
                     >
                       {options.map((option) => (
                         <option key={option} value={option}>
-                          {option}
+                          {catalogDescriptionMode === 'generic' &&
+                          component.kind === 'container-service' &&
+                          key === 'launchType'
+                            ? option === 'fargate'
+                              ? 'Managed serverless'
+                              : 'Virtual machines'
+                            : option}
                         </option>
                       ))}
                     </select>

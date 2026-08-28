@@ -9,6 +9,7 @@ import { CONNECTION_TYPES } from '../../architecture/model';
 import { useArchitectureStore } from '../../stores/architecture-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
 import { runWorkspaceAction } from '../layout/workspace-actions';
+import { protocolLabel } from '../service-labels';
 
 const inputClass =
   'mt-1 h-8 w-full border border-slate-700 bg-[#0a0f16] px-2 text-[12px] text-slate-200 outline-none focus:border-cyan-400/70';
@@ -26,6 +27,13 @@ export function ConnectionInspector({ connection }: ConnectionInspectorProps) {
     (state) => state.disconnectComponents,
   );
   const clearSelection = useWorkspaceUiStore((state) => state.clearSelection);
+  const catalogDescriptionMode = useWorkspaceUiStore(
+    (state) => state.catalogDescriptionMode,
+  );
+  const displayedProtocol = protocolLabel(
+    connection.protocol,
+    catalogDescriptionMode,
+  );
   const commit = (changes: ConnectionUpdate) =>
     runWorkspaceAction(
       () => updateConnection(connection.id, changes),
@@ -82,13 +90,13 @@ export function ConnectionInspector({ connection }: ConnectionInspectorProps) {
         <label className="block text-[11px] font-medium uppercase tracking-[0.1em] text-slate-600">
           Protocol
           <input
-            key={`${connection.id}:protocol:${connection.protocol ?? ''}`}
+            key={`${connection.id}:protocol:${connection.protocol ?? ''}:${catalogDescriptionMode}`}
             className={inputClass}
-            defaultValue={connection.protocol ?? ''}
-            placeholder="HTTPS, PostgreSQL/TLS, SQS…"
+            defaultValue={displayedProtocol}
+            placeholder="HTTPS, PostgreSQL/TLS, messaging…"
             onBlur={(event) => {
               const protocol = event.currentTarget.value.trim();
-              if (protocol !== (connection.protocol ?? '')) {
+              if (protocol !== displayedProtocol) {
                 commit({
                   protocol: protocol || undefined,
                 });

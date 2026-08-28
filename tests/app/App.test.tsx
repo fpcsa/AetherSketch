@@ -54,7 +54,9 @@ describe('AetherSketch application shell', () => {
     expect(screen.getByText('Orders Database')).toBeInTheDocument();
     expect(screen.getByText('Estimated architecture cost')).toBeInTheDocument();
     expect(screen.getByText('$675')).toBeInTheDocument();
-    expect(screen.getByText('planning — not AWS quote')).toBeInTheDocument();
+    expect(
+      screen.getByText('planning — not a billing quote'),
+    ).toBeInTheDocument();
     expect(screen.getByText('57')).toBeInTheDocument();
     expect(screen.getByText('76')).toBeInTheDocument();
   });

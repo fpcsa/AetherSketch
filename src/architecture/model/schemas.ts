@@ -85,6 +85,27 @@ export const componentSchemas = [
   z
     .object({
       ...componentBaseFields,
+      kind: z.literal('internet-gateway'),
+      configuration: z.object({}).strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...componentBaseFields,
+      kind: z.literal('virtual-private-gateway'),
+      configuration: z
+        .object({
+          asn: z.union([
+            z.number().int().min(64512).max(65534),
+            z.number().int().min(4_200_000_000).max(4_294_967_294),
+          ]),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...componentBaseFields,
       kind: z.literal('internet'),
       configuration: z
         .object({ entryType: z.literal('public-internet') })

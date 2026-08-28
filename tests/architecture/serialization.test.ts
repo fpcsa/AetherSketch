@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ARCHITECTURE_SCHEMA_VERSION,
   ArchitectureDomainError,
+  createEmptyArchitecture,
   validateArchitecture,
 } from '../../src/architecture/model';
 import { createComponentFromCatalog } from '../../src/architecture/catalog';
@@ -52,6 +53,43 @@ describe('architecture serialization', () => {
 
     expect(restored).toEqual(architecture);
     expect(restored.schemaVersion).toBe(ARCHITECTURE_SCHEMA_VERSION);
+  });
+
+  it('round-trips both gateways, their settings, and a connection', () => {
+    const architecture = createEmptyArchitecture({
+      name: 'Gateway serialization',
+    });
+    const context = { provider: 'aws' as const, region: architecture.region };
+    const internetGateway = createComponentFromCatalog(
+      { kind: 'internet-gateway' },
+      context,
+    );
+    const privateGateway = createComponentFromCatalog(
+      {
+        kind: 'virtual-private-gateway',
+        configuration: { asn: 4_200_000_001 },
+      },
+      context,
+    );
+    const graph = {
+      ...architecture,
+      components: [internetGateway, privateGateway],
+      connections: [
+        {
+          id: 'gateway-link',
+          source: internetGateway.id,
+          target: privateGateway.id,
+          type: 'request' as const,
+          protocol: 'IPsec',
+          encrypted: true,
+          critical: false,
+          metadata: {},
+        },
+      ],
+    };
+    expect(deserializeArchitecture(serializeArchitecture(graph))).toEqual(
+      graph,
+    );
   });
 
   it('round-trips trigger connections as a supported semantic type', () => {

@@ -101,6 +101,67 @@ async function execute<T>(
 }
 
 describe('WebMCP mutation tools', () => {
+  it('adds and connects both gateways, validates ASN edits, and enforces locks', async () => {
+    const { tools, architectureStore, intelligenceStore } = createHarness();
+    const add = toolNamed(tools, 'add_component');
+    for (const kind of ['internet-gateway', 'virtual-private-gateway']) {
+      expect(await execute(add, { kind })).toMatchObject({ ok: true });
+    }
+    const internetGateway = architectureStore
+      .getState()
+      .architecture.components.find(
+        (component) => component.kind === 'internet-gateway',
+      )!;
+    const privateGateway = architectureStore
+      .getState()
+      .architecture.components.find(
+        (component) => component.kind === 'virtual-private-gateway',
+      )!;
+    const update = toolNamed(tools, 'update_component');
+    expect(
+      await execute(update, {
+        componentId: privateGateway.id,
+        changes: { configuration: { asn: 65000 } },
+      }),
+    ).toMatchObject({ ok: true });
+    const before = architectureStore.getState().architecture;
+    for (const [componentId, configuration] of [
+      [privateGateway.id, { asn: 65535 }],
+      [internetGateway.id, { asn: 65000 }],
+    ]) {
+      expect(
+        await execute(update, { componentId, changes: { configuration } }),
+      ).toMatchObject({
+        ok: false,
+        error: { code: 'INVALID_CONFIGURATION' },
+      });
+      expect(architectureStore.getState().architecture).toBe(before);
+    }
+    expect(
+      await execute(toolNamed(tools, 'connect_components'), {
+        sourceComponentId: internetGateway.id,
+        targetComponentId: privateGateway.id,
+        type: 'request',
+        protocol: 'IPsec',
+        encrypted: true,
+      }),
+    ).toMatchObject({ ok: true });
+    architectureStore.getState().lockComponent(privateGateway.id);
+    expect(
+      await execute(update, {
+        componentId: privateGateway.id,
+        changes: { configuration: { asn: 65001 } },
+      }),
+    ).toMatchObject({ ok: false, error: { code: 'COMPONENT_LOCKED' } });
+    expect(
+      architectureStore
+        .getState()
+        .architecture.components.find(
+          (component) => component.id === privateGateway.id,
+        ),
+    ).toMatchObject({ locked: true, configuration: { asn: 65000 } });
+    intelligenceStore.getState().dispose();
+  });
   it.each(WEBMCP_MUTATION_TOOL_NAMES)(
     'fails closed for malformed inputs, cancelled calls and Review Mode: %s',
     async (name) => {

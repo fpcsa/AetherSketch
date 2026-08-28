@@ -7,6 +7,8 @@ import type {
 
 const entryKinds = new Set<ComponentKind>([
   'internet',
+  'internet-gateway',
+  'virtual-private-gateway',
   'dns',
   'cdn',
   'api-gateway',
@@ -122,6 +124,8 @@ export function isComponentRedundant(
       );
     case 'load-balancer':
       return component.availabilityZones.length >= 2;
+    case 'internet-gateway':
+    case 'virtual-private-gateway':
     case 'serverless-function':
     case 'api-gateway':
     case 'nosql-database':

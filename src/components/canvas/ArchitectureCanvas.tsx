@@ -6,6 +6,7 @@ import {
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
+  useNodesInitialized,
   useReactFlow,
   type Connection,
   type EdgeMouseHandler,
@@ -36,6 +37,7 @@ import { useIntelligenceStore } from '../../stores/intelligence-store';
 import { useThemeStore } from '../../stores/theme-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
 import { runWorkspaceAction } from '../layout/workspace-actions';
+import { protocolLabel } from '../service-labels';
 import { ArchitectureEdge } from './ArchitectureEdge';
 import { ArchitectureNode } from './ArchitectureNode';
 import { getComponentVisual } from './component-visuals';
@@ -76,6 +78,7 @@ const connectionColors: Record<
 };
 
 function ArchitectureCanvasInner() {
+  const nodesInitialized = useNodesInitialized();
   const architecture = useArchitectureStore((state) => state.architecture);
   const addComponent = useArchitectureStore((state) => state.addComponent);
   const moveComponent = useArchitectureStore((state) => state.moveComponent);
@@ -90,6 +93,9 @@ function ArchitectureCanvasInner() {
   );
   const simulation = useIntelligenceStore((state) => state.simulation);
   const theme = useThemeStore((state) => state.theme);
+  const catalogDescriptionMode = useWorkspaceUiStore(
+    (state) => state.catalogDescriptionMode,
+  );
   const selectedComponentId = useWorkspaceUiStore(
     (state) => state.selectedComponentId,
   );
@@ -193,14 +199,20 @@ function ArchitectureCanvasInner() {
             width: 14,
             height: 14,
           },
-          ariaLabel: `${connection.type} connection${connection.protocol ? ` using ${connection.protocol}` : ''}`,
+          ariaLabel: `${connection.type} connection${connection.protocol ? ` using ${protocolLabel(connection.protocol, catalogDescriptionMode)}` : ''}`,
         };
       }),
-    [architecture.connections, selectedConnectionId, simulation, theme],
+    [
+      architecture.connections,
+      selectedConnectionId,
+      simulation,
+      theme,
+      catalogDescriptionMode,
+    ],
   );
 
   useEffect(() => {
-    if (!selectedComponentId || focusRequest === 0) {
+    if (!nodesInitialized || !selectedComponentId || focusRequest === 0) {
       return;
     }
     const node = getNode(selectedComponentId);
@@ -212,7 +224,7 @@ function ArchitectureCanvasInner() {
         maxZoom: 1.15,
       });
     }
-  }, [fitView, focusRequest, getNode, selectedComponentId]);
+  }, [fitView, focusRequest, getNode, nodesInitialized, selectedComponentId]);
 
   const handleNodeClick: NodeMouseHandler<ArchitectureFlowNode> = useCallback(
     (_event, node) => {

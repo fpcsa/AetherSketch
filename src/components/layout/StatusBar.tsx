@@ -41,7 +41,9 @@ export function StatusBar() {
         label="Estimated architecture cost"
         value={cost === undefined ? '—' : `$${cost.toLocaleString('en-US')}`}
         detail={
-          analysisStale ? 'stale planning estimate' : 'planning — not AWS quote'
+          analysisStale
+            ? 'stale planning estimate'
+            : 'planning — not a billing quote'
         }
       />
       <StatusMetric

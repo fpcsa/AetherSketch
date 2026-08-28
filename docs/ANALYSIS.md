@@ -46,7 +46,13 @@ The cost model starts with each component kind's catalog baseline. It then appli
 
 Component and total values are rounded to cents. Request volume, data transfer, regional pricing, discounts, taxes, support, reserved capacity, and provider price-sheet details are intentionally excluded.
 
-**The result is a planning estimate, not an AWS billing quote.**
+**The result is a planning estimate, not a cloud billing quote.**
+
+Internet Gateway and Virtual Private Gateway have a $0 gateway-resource baseline in this model. VPN connections, dedicated links, and traffic charges are excluded, as stated in their per-component cost explanations. This is not a zero-cost estimate for a working private network.
+
+Both gateways can start a graph path when they have no incoming edge. Internet Gateway is public ingress for the existing exposure/WAF checks; Virtual Private Gateway is private ingress and does not by itself trigger those checks. Both are treated as managed regional redundancy, not global services. Default placement has no individual availability zone; component and regional failures still interrupt their paths. Route tables, tunnel health, customer gateways, failover capacity, and live provisioning are outside this abstraction.
+
+The Internet Gateway configuration is empty; routing is modeled with connections. Virtual Private Gateway has a private `asn`, default `64512`, accepting `64512–65534` or `4200000000–4294967294`. See the provider's [Internet Gateway model](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html) and [Virtual Private Gateway setup](https://docs.aws.amazon.com/vpn/latest/s2svpn/SetUpVPNConnections.html). These settings describe a design; editing an ASN here does not modify a deployed gateway.
 
 ## Resilience score
 

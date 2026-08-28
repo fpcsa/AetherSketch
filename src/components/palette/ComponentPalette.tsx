@@ -10,7 +10,11 @@ import {
   Plus,
 } from 'lucide-react';
 
-import { componentCatalog, componentKinds } from '../../architecture/catalog';
+import {
+  componentCatalog,
+  componentKinds,
+  nextAutomaticPosition,
+} from '../../architecture/catalog';
 import type { ComponentKind } from '../../architecture/model';
 import { useArchitectureStore } from '../../stores/architecture-store';
 import type { CatalogDescriptionMode } from '../../stores/workspace-ui-store';
@@ -46,9 +50,6 @@ export function ComponentPalette() {
   );
   const selectComponent = useWorkspaceUiStore((state) => state.focusComponent);
   const setActivePanel = useWorkspaceUiStore((state) => state.setActivePanel);
-  const componentCount = useArchitectureStore(
-    (state) => state.architecture.components.length,
-  );
   const addComponent = useArchitectureStore((state) => state.addComponent);
   const selectedCategory =
     paletteCategories.find((category) => category.id === activeCategory) ??
@@ -61,10 +62,9 @@ export function ComponentPalette() {
     runWorkspaceAction(() => {
       const component = addComponent({
         kind,
-        position: {
-          x: 96 + (componentCount % 4) * 224,
-          y: 96 + Math.floor(componentCount / 4) * 144,
-        },
+        position: nextAutomaticPosition(
+          useArchitectureStore.getState().architecture,
+        ),
       });
       selectComponent(component.id);
       setActivePanel('inspector');
@@ -148,7 +148,7 @@ export function ComponentPalette() {
                 event.currentTarget.value as CatalogDescriptionMode,
               )
             }
-            className="h-8 min-w-0 border border-slate-800 bg-[#0a0f16] px-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 outline-none focus:border-cyan-400/70"
+            className="h-8 w-24 shrink-0 border border-slate-800 bg-[#0a0f16] px-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 outline-none focus:border-cyan-400/70"
           >
             <option value="aws">AWS</option>
             <option value="generic">Generic</option>
@@ -177,11 +177,11 @@ export function ComponentPalette() {
                   aria-hidden="true"
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[12px] font-medium text-slate-400 group-hover:text-slate-200">
+                  <span className="block break-words text-[12px] font-medium leading-4 text-slate-400 group-hover:text-slate-200">
                     {entry.displayName}
                   </span>
                   {catalogDescriptionMode === 'aws' ? (
-                    <span className="block truncate text-[11px] text-slate-700 group-hover:text-slate-500">
+                    <span className="block break-words text-[11px] leading-4 text-slate-700 group-hover:text-slate-500">
                       {entry.aws.displayName}
                     </span>
                   ) : null}

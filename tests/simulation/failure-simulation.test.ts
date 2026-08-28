@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { simulateFailure } from '../../src/architecture/simulation';
+import { createComponentFromCatalog } from '../../src/architecture/catalog';
+import { analyzeArchitecture } from '../../src/architecture/analysis';
+import { createEmptyArchitecture } from '../../src/architecture/model';
 import { getArchitectureTemplate } from '../../src/templates';
 import {
   getAgentImprovedLockedEcommerceArchitecture,
@@ -8,6 +11,72 @@ import {
 } from '../helpers/architecture-fixtures';
 
 describe('deterministic failure simulation', () => {
+  it.each(['internet-gateway', 'virtual-private-gateway'] as const)(
+    'treats %s as a regional entry and preserves its path during a zone outage',
+    (kind) => {
+      const base = createEmptyArchitecture({ name: 'Gateway simulation' });
+      const context = { provider: 'aws' as const, region: base.region };
+      const gateway = createComponentFromCatalog(
+        { kind, critical: true },
+        context,
+      );
+      const database = createComponentFromCatalog(
+        {
+          kind: 'sql-database',
+          critical: true,
+          availabilityZones: ['eu-west-1a', 'eu-west-1b'],
+          configuration: { multiAZ: true },
+        },
+        context,
+      );
+      const architecture = {
+        ...base,
+        components: [gateway, database],
+        connections: [
+          {
+            id: 'gateway-data-link',
+            source: gateway.id,
+            target: database.id,
+            type: 'data' as const,
+            protocol: 'TLS',
+            encrypted: true,
+            critical: true,
+            metadata: {},
+          },
+        ],
+      };
+      const findings = analyzeArchitecture(architecture).findings.map(
+        (finding) => finding.code,
+      );
+      expect(findings).not.toContain('NO_ENTRY_PATH');
+      expect(findings).not.toContain('CRITICAL_COMPONENT_UNREACHABLE');
+      expect(findings).not.toContain('CRITICAL_PATH_SINGLE_POINTS');
+      expect(findings.includes('DATABASE_DIRECTLY_EXPOSED')).toBe(
+        kind === 'internet-gateway',
+      );
+      expect(findings.includes('PUBLIC_WEB_WITHOUT_WAF')).toBe(
+        kind === 'internet-gateway',
+      );
+      const zoneFailure = simulateFailure(architecture, {
+        scope: 'availability-zone',
+        target: 'eu-west-1a',
+      });
+      expect(zoneFailure.criticalPathsRemaining).toBe(true);
+      expect(zoneFailure.failedComponentIds).toEqual([]);
+      expect(zoneFailure.degradedComponentIds).toEqual([database.id]);
+      const regionFailure = simulateFailure(architecture, {
+        scope: 'region',
+        target: 'eu-west-1',
+      });
+      expect(regionFailure.failedComponentIds).toContain(gateway.id);
+      expect(regionFailure.criticalPathsRemaining).toBe(false);
+      const gatewayFailure = simulateFailure(architecture, {
+        scope: 'component',
+        target: gateway.id,
+      });
+      expect(gatewayFailure.criticalPathsRemaining).toBe(false);
+    },
+  );
   it('propagates a single-AZ outage through the initial critical path', () => {
     const architecture = getArchitectureTemplate('ecommerce-production');
     const result = simulateFailure(architecture, {

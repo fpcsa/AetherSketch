@@ -47,6 +47,37 @@ export const componentCatalog = {
     defaultAvailabilityZoneCount: 0,
     supportedProperties: ['critical', 'position'],
   },
+  'internet-gateway': {
+    kind: 'internet-gateway',
+    displayName: 'Internet Gateway',
+    category: 'network',
+    description:
+      'Regional gateway between a virtual network and the public internet. Model routing with connections; traffic charges are excluded.',
+    aws: { service: 'internet-gateway', displayName: 'AWS Internet Gateway' },
+    defaultConfiguration: {},
+    baseMonthlyEstimate: 0,
+    defaultSize: { width: 192, height: 88 },
+    defaultReplicas: 1,
+    defaultAvailabilityZoneCount: 0,
+    supportedProperties: ['critical', 'position'],
+  },
+  'virtual-private-gateway': {
+    kind: 'virtual-private-gateway',
+    displayName: 'Virtual Private Gateway',
+    category: 'network',
+    description:
+      'Regional gateway for private connectivity to an external network. VPN connections, dedicated links, and traffic charges are excluded.',
+    aws: {
+      service: 'virtual-private-gateway',
+      displayName: 'AWS Virtual Private Gateway',
+    },
+    defaultConfiguration: { asn: 64512 },
+    baseMonthlyEstimate: 0,
+    defaultSize: { width: 208, height: 96 },
+    defaultReplicas: 1,
+    defaultAvailabilityZoneCount: 0,
+    supportedProperties: ['asn', 'critical', 'position'],
+  },
   dns: {
     kind: 'dns',
     displayName: 'DNS',
@@ -466,12 +497,14 @@ export function createComponentFromCatalog(
 ): ArchitectureComponent {
   const entry = componentCatalog[input.kind];
   const region = input.region ?? context.region;
+  const provider = input.provider ?? context.provider;
   const component = {
     id: input.id ?? createEntityId(input.kind),
     name: input.name ?? entry.displayName,
     kind: input.kind,
-    provider: input.provider ?? context.provider,
-    service: input.service ?? entry.aws.service,
+    provider,
+    service:
+      input.service ?? (provider === 'aws' ? entry.aws.service : entry.kind),
     region,
     availabilityZones:
       input.availabilityZones ??

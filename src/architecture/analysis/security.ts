@@ -150,6 +150,7 @@ export function analyzeSecurity(architecture: Architecture): ScoreAnalysis {
   const publicWebArchitecture = architecture.components.some(
     (component) =>
       component.kind === 'internet' ||
+      component.kind === 'internet-gateway' ||
       component.kind === 'cdn' ||
       (component.kind === 'load-balancer' &&
         component.configuration.scheme === 'internet-facing') ||

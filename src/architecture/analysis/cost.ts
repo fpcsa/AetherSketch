@@ -211,9 +211,13 @@ function estimateComponentCost(
     multipliers,
     estimatedMonthlyCost,
     explanation:
-      multipliers.length === 0
-        ? `Catalog baseline of $${catalog.baseMonthlyEstimate}/month.`
-        : `Catalog baseline adjusted by ${multipliers.map((item) => item.label).join(', ')}.`,
+      component.kind === 'internet-gateway'
+        ? 'Gateway resource only: $0/month in this planning model. Traffic charges are excluded.'
+        : component.kind === 'virtual-private-gateway'
+          ? 'Gateway resource only: $0/month in this planning model. VPN connections, dedicated links, and traffic charges are excluded.'
+          : multipliers.length === 0
+            ? `Catalog baseline of $${catalog.baseMonthlyEstimate}/month.`
+            : `Catalog baseline adjusted by ${multipliers.map((item) => item.label).join(', ')}.`,
   };
 }
 
@@ -240,7 +244,7 @@ export function estimateArchitectureCost(
       'Request volume, data transfer, discounts, taxes, support plans, and regional price variation are excluded.',
     ],
     disclaimer:
-      'Estimated architecture cost is a planning model and is not an AWS billing quote.',
+      'Estimated architecture cost is a planning model and is not a cloud billing quote.',
     findings: [
       createFinding({
         id: 'cost:planning-model',
