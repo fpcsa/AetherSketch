@@ -81,7 +81,7 @@ function createTool<TInput extends Record<string, unknown>, TOutput>(
     execute: (input, options) => {
       reporter?.invocation(name, input);
       try {
-        if (options.signal.aborted) {
+        if (options?.signal?.aborted) {
           throw options.signal.reason;
         }
         const data = handler(parser.parse(input));
@@ -89,7 +89,7 @@ function createTool<TInput extends Record<string, unknown>, TOutput>(
         reporter?.result(name, result);
         return result;
       } catch (error) {
-        const translated = toWebMcpToolError(error, options.signal);
+        const translated = toWebMcpToolError(error, options?.signal);
         const result: WebMcpToolResult<TOutput> = {
           ok: false,
           error: translated,

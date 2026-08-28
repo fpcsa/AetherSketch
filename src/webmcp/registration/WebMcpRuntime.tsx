@@ -12,6 +12,91 @@ import {
   registerWebMcpTools,
 } from './register-read-tools';
 
+function recordToolResult(toolName: string, result: unknown): void {
+  useWebMcpStore.getState().recordResult(toolName, result);
+  if (!result || typeof result !== 'object' || !('ok' in result)) {
+    return;
+  }
+  const envelope = result as { ok: boolean; data?: unknown };
+  if (!envelope.ok || !envelope.data || typeof envelope.data !== 'object') {
+    return;
+  }
+  const data = envelope.data as Record<string, unknown>;
+
+  if (toolName === 'analyze_architecture') {
+    const focus = typeof data.focus === 'string' ? data.focus : 'architecture';
+    useArchitectureStore.getState().recordActivity({
+      actor: 'agent',
+      action: 'webmcp.analysis.completed',
+      summary:
+        focus === 'all' ? 'Analyzed production readiness' : `Analyzed ${focus}`,
+      details: { toolName, focus },
+    });
+  }
+
+  if (toolName === 'simulate_failure') {
+    const target = typeof data.target === 'string' ? data.target : 'target';
+    const status = typeof data.status === 'string' ? data.status : 'unknown';
+    useArchitectureStore.getState().recordActivity({
+      actor: 'agent',
+      action: 'webmcp.simulation.completed',
+      summary: `Simulated ${target} failure — system ${status}`,
+      details: { toolName, target, status },
+    });
+  }
+}
+
+function recordToolError(toolName: string, error: unknown): void {
+  useWebMcpStore.getState().recordError(toolName, error);
+  const failure =
+    error && typeof error === 'object'
+      ? (error as {
+          code?: unknown;
+          message?: unknown;
+          componentId?: unknown;
+          edgeId?: unknown;
+        })
+      : {};
+  const code = typeof failure.code === 'string' ? failure.code : 'TOOL_FAILED';
+  const message =
+    typeof failure.message === 'string'
+      ? failure.message
+      : 'The tool could not complete.';
+  const componentId =
+    typeof failure.componentId === 'string' ? failure.componentId : undefined;
+  const edgeId =
+    typeof failure.edgeId === 'string' ? failure.edgeId : undefined;
+
+  if (code === 'COMPONENT_LOCKED' && componentId) {
+    const componentName =
+      useArchitectureStore
+        .getState()
+        .architecture.components.find(
+          (component) => component.id === componentId,
+        )?.name ?? componentId;
+    const action = toolName === 'remove_component' ? 'remove' : 'modify';
+    useArchitectureStore.getState().recordActivity({
+      actor: 'agent',
+      action: 'webmcp.action.blocked',
+      summary: `Attempted to ${action} locked ${componentName} — blocked`,
+      details: { toolName, code, componentId },
+    });
+    return;
+  }
+
+  useArchitectureStore.getState().recordActivity({
+    actor: 'agent',
+    action: 'webmcp.action.failed',
+    summary: `${toolName.replaceAll('_', ' ')} failed — ${message}`,
+    details: {
+      toolName,
+      code,
+      ...(componentId ? { componentId } : {}),
+      ...(edgeId ? { edgeId } : {}),
+    },
+  });
+}
+
 export function WebMcpRuntime() {
   const status = useWebMcpStore((state) => state.status);
   const mode = useWebMcpStore((state) => state.mode);
@@ -47,10 +132,8 @@ export function WebMcpRuntime() {
       reporter: {
         invocation: (toolName, input) =>
           useWebMcpStore.getState().recordInvocation(toolName, input),
-        result: (toolName, result) =>
-          useWebMcpStore.getState().recordResult(toolName, result),
-        error: (toolName, error) =>
-          useWebMcpStore.getState().recordError(toolName, error),
+        result: (toolName, result) => recordToolResult(toolName, result),
+        error: (toolName, error) => recordToolError(toolName, error),
       },
     });
 
@@ -117,10 +200,8 @@ export function WebMcpRuntime() {
       reporter: {
         invocation: (toolName, input) =>
           useWebMcpStore.getState().recordInvocation(toolName, input),
-        result: (toolName, result) =>
-          useWebMcpStore.getState().recordResult(toolName, result),
-        error: (toolName, error) =>
-          useWebMcpStore.getState().recordError(toolName, error),
+        result: (toolName, result) => recordToolResult(toolName, result),
+        error: (toolName, error) => recordToolError(toolName, error),
       },
     });
 

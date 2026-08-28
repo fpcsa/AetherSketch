@@ -77,7 +77,7 @@ export function ComponentPalette() {
         <div>
           <h2
             id="component-palette-title"
-            className="text-[11px] font-semibold uppercase tracking-[0.11em] text-slate-400"
+            className="text-[13px] font-semibold uppercase tracking-[0.11em] text-slate-400"
           >
             Components
           </h2>
@@ -96,7 +96,7 @@ export function ComponentPalette() {
                 <button
                   type="button"
                   onClick={() => setActiveCategory(category.id)}
-                  className={`group flex h-9 w-full items-center gap-2.5 border-l-2 px-2 text-left text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-400/80 ${
+                  className={`group flex h-9 w-full items-center gap-2.5 border-l-2 px-2 text-left text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-400/80 ${
                     isActive
                       ? 'border-cyan-400 bg-cyan-400/8 text-slate-100'
                       : 'border-transparent text-slate-500 hover:bg-slate-800/50 hover:text-slate-300'
@@ -120,10 +120,10 @@ export function ComponentPalette() {
       </nav>
 
       <div className="mx-3 border-t border-slate-800/80 pt-4">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+        <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">
           {selectedCategory.label}
         </p>
-        <p className="mt-1.5 text-[11px] leading-4 text-slate-600">
+        <p className="mt-1.5 text-[13px] leading-4 text-slate-600">
           {selectedCategory.description}
         </p>
       </div>
@@ -132,7 +132,7 @@ export function ComponentPalette() {
         <div className="mb-1.5 flex items-center justify-between gap-2">
           <label
             htmlFor="catalog-description-mode"
-            className="text-[9px] uppercase tracking-[0.12em] text-slate-700"
+            className="text-[11px] uppercase tracking-[0.12em] text-slate-700"
           >
             Service labels
           </label>
@@ -145,7 +145,7 @@ export function ComponentPalette() {
                 event.currentTarget.value as CatalogDescriptionMode,
               )
             }
-            className="h-6 border border-slate-800 bg-[#0a0f16] px-1.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-500 outline-none focus:border-cyan-400/70"
+            className="h-8 min-w-0 border border-slate-800 bg-[#0a0f16] px-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 outline-none focus:border-cyan-400/70"
           >
             <option value="aws">AWS</option>
             <option value="generic">Generic</option>
@@ -174,11 +174,11 @@ export function ComponentPalette() {
                   aria-hidden="true"
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[10px] font-medium text-slate-400 group-hover:text-slate-200">
+                  <span className="block truncate text-[12px] font-medium text-slate-400 group-hover:text-slate-200">
                     {entry.displayName}
                   </span>
                   {catalogDescriptionMode === 'aws' ? (
-                    <span className="block truncate text-[9px] text-slate-700 group-hover:text-slate-500">
+                    <span className="block truncate text-[11px] text-slate-700 group-hover:text-slate-500">
                       {entry.aws.displayName}
                     </span>
                   ) : null}
@@ -193,7 +193,7 @@ export function ComponentPalette() {
         </ul>
       </div>
 
-      <div className="mt-auto border-t border-slate-800/80 px-3 py-2.5 text-[9px] uppercase tracking-[0.12em] text-slate-700">
+      <div className="mt-auto border-t border-slate-800/80 px-3 py-2.5 text-[11px] uppercase tracking-[0.12em] text-slate-700">
         Provider-neutral IR · {componentKinds.length} kinds
       </div>
     </aside>

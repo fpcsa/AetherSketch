@@ -27,7 +27,19 @@ export function SimulationPanel() {
   );
   const focusComponent = useWorkspaceUiStore((state) => state.focusComponent);
   const setNotice = useWorkspaceUiStore((state) => state.setNotice);
-  const [scope, setScope] = useState<FailureScope>('component');
+  const [selection, setSelection] = useState({
+    simulation,
+    scope: simulation?.scope ?? 'component',
+    target: simulation?.target ?? '',
+  });
+  if (selection.simulation !== simulation) {
+    setSelection({
+      simulation,
+      scope: simulation?.scope ?? selection.scope,
+      target: simulation?.target ?? selection.target,
+    });
+  }
+  const { scope, target } = selection;
 
   const options = useMemo(() => {
     if (scope === 'component') {
@@ -53,10 +65,14 @@ export function SimulationPanel() {
       .sort()
       .map((region) => ({ value: region, label: region }));
   }, [architecture.components, scope]);
-  const [target, setTarget] = useState(options[0]?.value ?? '');
   const selectedTarget = options.some((option) => option.value === target)
     ? target
     : (options[0]?.value ?? '');
+  const statusHeadline = simulation
+    ? simulation.status === 'unavailable'
+      ? 'System is unavailable'
+      : `System remains ${simulation.status}`
+    : null;
 
   const startSimulation = () => {
     if (!selectedTarget) {
@@ -77,7 +93,7 @@ export function SimulationPanel() {
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="space-y-3 border-b border-slate-800/80 p-3">
         <div>
-          <p className="mb-1.5 text-[8px] font-semibold uppercase tracking-[0.11em] text-slate-600">
+          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.11em] text-slate-600">
             Failure scope
           </p>
           <div className="grid grid-cols-3 gap-1">
@@ -85,8 +101,10 @@ export function SimulationPanel() {
               <button
                 key={item.value}
                 type="button"
-                onClick={() => setScope(item.value)}
-                className={`min-h-8 border px-1 text-[8px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80 ${
+                onClick={() =>
+                  setSelection({ ...selection, scope: item.value, target: '' })
+                }
+                className={`min-h-8 border px-1 text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80 ${
                   scope === item.value
                     ? 'border-cyan-400/40 bg-cyan-400/10 text-cyan-200'
                     : 'border-slate-800 text-slate-600 hover:text-slate-300'
@@ -99,12 +117,14 @@ export function SimulationPanel() {
           </div>
         </div>
 
-        <label className="block text-[8px] font-semibold uppercase tracking-[0.11em] text-slate-600">
+        <label className="block text-[10px] font-semibold uppercase tracking-[0.11em] text-slate-600">
           Failure target
           <select
-            className="mt-1 h-9 w-full border border-slate-700 bg-[#0a0f16] px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/70"
+            className="mt-1 h-9 w-full border border-slate-700 bg-[#0a0f16] px-2 text-[12px] text-slate-200 outline-none focus:border-cyan-400/70"
             value={selectedTarget}
-            onChange={(event) => setTarget(event.currentTarget.value)}
+            onChange={(event) =>
+              setSelection({ ...selection, target: event.currentTarget.value })
+            }
           >
             {options.map((option) => (
               <option key={option.value} value={option.value}>
@@ -119,7 +139,7 @@ export function SimulationPanel() {
             type="button"
             onClick={startSimulation}
             disabled={!selectedTarget}
-            className="flex h-8 flex-1 items-center justify-center gap-1.5 border border-rose-400/30 bg-rose-400/8 text-[10px] font-semibold text-rose-200 transition-colors enabled:hover:bg-rose-400/15 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/70"
+            className="flex h-8 flex-1 items-center justify-center gap-1.5 border border-rose-400/30 bg-rose-400/8 text-[12px] font-semibold text-rose-200 transition-colors enabled:hover:bg-rose-400/15 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/70"
           >
             <Play className="size-3" aria-hidden="true" />
             Run failure simulation
@@ -162,15 +182,17 @@ export function SimulationPanel() {
                     aria-hidden="true"
                   />
                 )}
-                <span className="text-[11px] font-semibold capitalize text-slate-200">
-                  {simulation.status}
-                </span>
-                <span className="ml-auto text-[8px] uppercase tracking-[0.1em] text-slate-600">
-                  {simulation.scope}
+                <span className="text-[13px] font-semibold text-slate-100">
+                  {statusHeadline}
                 </span>
               </div>
-              <p className="mt-2 text-[9px] leading-4 text-slate-500">
-                {simulation.explanation}
+              <p className="mt-1 text-[11px] font-medium text-slate-400">
+                {simulation.target} · {simulation.scope} failure
+              </p>
+              <p className="mt-2 text-[12px] leading-4 text-slate-400">
+                {simulation.criticalPathsRemaining
+                  ? 'Every critical component remains reachable through surviving capacity.'
+                  : 'At least one critical component is failed or unreachable from the entry path.'}
               </p>
             </div>
 
@@ -216,7 +238,7 @@ export function SimulationPanel() {
                 className="mt-0.5 size-3 shrink-0 text-cyan-400"
                 aria-hidden="true"
               />
-              <p className="text-[8px] leading-4 text-slate-600">
+              <p className="text-[10px] leading-4 text-slate-600">
                 Simulation is a transient graph projection. Architecture state,
                 persistence, and undo history are unchanged.
               </p>
@@ -229,10 +251,10 @@ export function SimulationPanel() {
                 className="mx-auto size-5 text-slate-700"
                 aria-hidden="true"
               />
-              <p className="mt-3 text-[10px] font-medium text-slate-400">
+              <p className="mt-3 text-[12px] font-medium text-slate-400">
                 No active simulation
               </p>
-              <p className="mt-1 text-[9px] leading-4 text-slate-700">
+              <p className="mt-1 text-[11px] leading-4 text-slate-700">
                 Choose a failure scope and target to project impact directly on
                 the canvas.
               </p>
@@ -255,7 +277,7 @@ function SummaryMetric({
 }) {
   return (
     <div className="border-r border-slate-800/80 px-2 py-2.5 text-center last:border-r-0">
-      <p className="text-[7px] uppercase tracking-[0.1em] text-slate-700">
+      <p className="text-[10px] uppercase tracking-[0.1em] text-slate-700">
         {label}
       </p>
       <p className={`mt-1 text-sm font-semibold ${tone}`}>{value}</p>
@@ -280,7 +302,7 @@ function SimulationComponents({
 }) {
   return (
     <section>
-      <p className="mb-1.5 text-[8px] font-semibold uppercase tracking-[0.11em] text-slate-600">
+      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.11em] text-slate-600">
         {title}
       </p>
       {ids.length > 0 ? (
@@ -294,16 +316,18 @@ function SimulationComponents({
                 key={id}
                 type="button"
                 onClick={() => onSelect(id)}
-                className="flex h-8 w-full items-center border border-slate-800/80 bg-slate-900/20 px-2.5 text-left text-[9px] text-slate-400 transition-colors hover:border-cyan-400/30 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70"
+                className="flex h-8 w-full items-center border border-slate-800/80 bg-slate-900/20 px-2.5 text-left text-[11px] text-slate-400 transition-colors hover:border-cyan-400/30 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70"
               >
                 {component?.name ?? id}
-                <span className="ml-auto text-[8px] text-slate-700">Focus</span>
+                <span className="ml-auto text-[10px] text-slate-700">
+                  Focus
+                </span>
               </button>
             );
           })}
         </div>
       ) : (
-        <p className="text-[9px] text-slate-700">{empty}</p>
+        <p className="text-[11px] text-slate-700">{empty}</p>
       )}
     </section>
   );

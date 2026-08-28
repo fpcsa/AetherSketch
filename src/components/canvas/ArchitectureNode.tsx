@@ -1,5 +1,5 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { CircleAlert, LockKeyhole, ShieldAlert } from 'lucide-react';
+import { CircleX, LockKeyhole, ShieldAlert, TriangleAlert } from 'lucide-react';
 
 import { getCatalogEntry } from '../../architecture/catalog';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
@@ -35,11 +35,29 @@ export function ArchitectureNode({
 
   return (
     <article
-      className={`group relative min-h-[88px] w-[196px] border shadow-lg transition-[border-color,box-shadow,background-color] ${stateClasses[simulationState]} ${selected ? 'ring-2 ring-cyan-300/70 ring-offset-2 ring-offset-[#090d13]' : ''}`}
+      className={`group relative min-h-[104px] w-[216px] border shadow-lg transition-[border-color,box-shadow,background-color] ${stateClasses[simulationState]} ${selected ? 'ring-2 ring-cyan-300/70 ring-offset-2 ring-offset-[#090d13]' : ''}`}
       aria-label={`${component.name}${catalogDescriptionMode === 'aws' ? `, ${catalog.aws.displayName}` : ''}, ${statusLabel}${component.locked ? ', locked' : ''}${component.critical ? ', critical' : ''}`}
       data-component-id={component.id}
       data-simulation-state={simulationState}
     >
+      {simulationState !== 'normal' ? (
+        <div
+          className={`absolute -right-1.5 -top-7 z-10 flex items-center gap-1 border px-1.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] shadow-lg ${
+            simulationState === 'failed'
+              ? 'border-rose-300/60 bg-rose-950/95 text-rose-200'
+              : 'border-amber-300/60 bg-amber-950/95 text-amber-200'
+          }`}
+          aria-hidden="true"
+        >
+          {simulationState === 'failed' ? (
+            <CircleX className="size-3" />
+          ) : (
+            <TriangleAlert className="size-3" />
+          )}
+          {statusLabel}
+        </div>
+      ) : null}
+
       <Handle
         type="target"
         position={Position.Left}
@@ -57,7 +75,7 @@ export function ArchitectureNode({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start gap-1.5">
-            <h3 className="min-w-0 flex-1 truncate text-[11px] font-semibold leading-4 text-slate-100">
+            <h3 className="min-w-0 flex-1 break-words text-[13px] font-semibold leading-[18px] text-slate-100">
               {component.name}
             </h3>
             {component.locked ? (
@@ -74,14 +92,14 @@ export function ArchitectureNode({
             ) : null}
           </div>
           {catalogDescriptionMode === 'aws' ? (
-            <p className="mt-0.5 truncate text-[9px] text-slate-500">
+            <p className="mt-0.5 break-words text-[11px] leading-4 text-slate-500">
               {catalog.aws.displayName}
             </p>
           ) : null}
         </div>
       </div>
 
-      <div className="flex h-7 items-center border-t border-slate-700/60 px-3 text-[8px] uppercase tracking-[0.1em]">
+      <div className="flex h-7 items-center border-t border-slate-700/60 px-3 text-[10px] uppercase tracking-[0.1em]">
         <span
           className={
             simulationState === 'failed'
@@ -92,7 +110,14 @@ export function ArchitectureNode({
           }
         >
           {simulationState !== 'normal' ? (
-            <CircleAlert className="mr-1 inline size-2.5" aria-hidden="true" />
+            simulationState === 'failed' ? (
+              <CircleX className="mr-1 inline size-3" aria-hidden="true" />
+            ) : (
+              <TriangleAlert
+                className="mr-1 inline size-3"
+                aria-hidden="true"
+              />
+            )
           ) : null}
           {statusLabel}
         </span>

@@ -90,9 +90,9 @@ function assertEditMode(isEditModeEnabled: () => boolean): void {
 }
 
 function nextAutomaticPosition(architecture: Architecture): ComponentPosition {
-  const origin = { x: 120, y: 120 };
-  const spacing = { x: 250, y: 170 };
-  const columns = 5;
+  const origin = { x: 48, y: 48 };
+  const spacing = { x: 304, y: 208 };
+  const columns = 3;
 
   for (let index = 0; index < 1000; index += 1) {
     const candidate = {
@@ -101,8 +101,8 @@ function nextAutomaticPosition(architecture: Architecture): ComponentPosition {
     };
     const occupied = architecture.components.some(
       (component) =>
-        Math.abs(component.position.x - candidate.x) < 170 &&
-        Math.abs(component.position.y - candidate.y) < 110,
+        Math.abs(component.position.x - candidate.x) < 248 &&
+        Math.abs(component.position.y - candidate.y) < 160,
     );
     if (!occupied) {
       return candidate;
@@ -176,7 +176,7 @@ function createMutationTool<TInput extends Record<string, unknown>, TOutput>(
       dependencies.reporter?.invocation(name, input);
       try {
         assertEditMode(dependencies.isEditModeEnabled);
-        if (options.signal.aborted) {
+        if (options?.signal?.aborted) {
           throw options.signal.reason;
         }
         const data = parser.parse(input);
@@ -185,7 +185,7 @@ function createMutationTool<TInput extends Record<string, unknown>, TOutput>(
         // wins before the synchronous domain mutation begins.
         await Promise.resolve();
         assertEditMode(dependencies.isEditModeEnabled);
-        if (options.signal.aborted) {
+        if (options?.signal?.aborted) {
           throw options.signal.reason;
         }
 
@@ -196,7 +196,7 @@ function createMutationTool<TInput extends Record<string, unknown>, TOutput>(
         dependencies.reporter?.result(name, result);
         return result;
       } catch (error) {
-        const translated = toWebMcpToolError(error, options.signal);
+        const translated = toWebMcpToolError(error, options?.signal);
         const result: WebMcpToolResult<TOutput> = {
           ok: false,
           error: translated,

@@ -46,14 +46,14 @@ export class CanvasErrorBoundary extends Component<
             >
               Canvas rendering paused
             </h2>
-            <p className="mt-2 text-[10px] leading-4 text-slate-500">
+            <p className="mt-2 text-[12px] leading-4 text-slate-500">
               Your architecture is still saved. Restart the visual canvas
               without reloading the project.
             </p>
             <button
               type="button"
               onClick={this.retry}
-              className="mx-auto mt-4 flex h-8 items-center gap-1.5 border border-rose-400/40 px-3 text-[10px] font-semibold text-rose-300 transition-colors hover:bg-rose-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/70"
+              className="mx-auto mt-4 flex h-8 items-center gap-1.5 border border-rose-400/40 px-3 text-[12px] font-semibold text-rose-300 transition-colors hover:bg-rose-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/70"
             >
               <RefreshCw className="size-3" aria-hidden="true" />
               Restart canvas

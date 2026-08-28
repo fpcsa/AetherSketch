@@ -85,18 +85,29 @@ export function ArchitectureEdge({
 
   const visual = edgeVisuals[connection.type];
   const impacted = data.impacted;
+  const impactState = data.impactState;
   const color = impacted
-    ? theme === 'dark'
-      ? '#fb7185'
-      : '#e11d48'
+    ? impactState === 'failed'
+      ? theme === 'dark'
+        ? '#fb7185'
+        : '#e11d48'
+      : theme === 'dark'
+        ? '#fbbf24'
+        : '#b45309'
     : visual[theme];
+  const impactLabel =
+    impactState === 'failed'
+      ? 'Failed path'
+      : impactState === 'degraded'
+        ? 'Reduced capacity'
+        : visual.label;
 
   return (
     <>
       <g
         data-edge-id={id}
         data-impacted={impacted ? 'true' : 'false'}
-        aria-label={`${visual.label} connection${impacted ? ', impacted' : ''}`}
+        aria-label={`${visual.label} connection${impacted ? `, ${impactLabel}` : ''}`}
       >
         <BaseEdge
           id={id}
@@ -112,9 +123,11 @@ export function ArchitectureEdge({
       </g>
       <EdgeLabelRenderer>
         <div
-          className={`nodrag nopan pointer-events-none absolute border px-1.5 py-0.5 text-[8px] uppercase tracking-[0.08em] shadow-sm ${
+          className={`nodrag nopan pointer-events-none absolute max-w-[80px] border px-1.5 py-0.5 text-center text-[10px] leading-3 uppercase tracking-[0.04em] shadow-sm ${
             impacted
-              ? 'border-rose-400/40 bg-rose-950/95 text-rose-200'
+              ? impactState === 'failed'
+                ? 'border-rose-400/40 bg-rose-950/95 text-rose-200'
+                : 'border-amber-400/40 bg-amber-950/95 text-amber-200'
               : 'border-slate-700/80 bg-[#0b1119]/95 text-slate-500'
           }`}
           style={{
@@ -122,7 +135,7 @@ export function ArchitectureEdge({
           }}
           aria-label={`${visual.label} connection${impacted ? ', impacted by simulation' : ''}`}
         >
-          {impacted ? 'Impacted' : visual.label}
+          {impacted ? impactLabel : visual.label}
         </div>
       </EdgeLabelRenderer>
     </>

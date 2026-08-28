@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { analyzeResilience } from '../../src/architecture/analysis';
 import { getArchitectureTemplate } from '../../src/templates';
-import { getHardenedEcommerceArchitecture } from '../helpers/architecture-fixtures';
+import {
+  getAgentImprovedLockedEcommerceArchitecture,
+  getHardenedEcommerceArchitecture,
+} from '../helpers/architecture-fixtures';
 
 describe('deterministic resilience scoring', () => {
   it('keeps the intentionally imperfect Ecommerce baseline in the expected range', () => {
@@ -89,6 +92,27 @@ describe('deterministic resilience scoring', () => {
     );
     expect(computeResult.findings.map((finding) => finding.code)).not.toContain(
       'CRITICAL_COMPUTE_SINGLE_REPLICA',
+    );
+  });
+
+  it('recognizes an independent replica without modifying the locked primary database', () => {
+    const architecture = getAgentImprovedLockedEcommerceArchitecture();
+    const database = architecture.components.find(
+      (component) => component.id === 'ecommerce-postgresql',
+    );
+    const result = analyzeResilience(architecture);
+
+    expect(database).toMatchObject({
+      locked: true,
+      availabilityZones: ['eu-west-1a'],
+      configuration: { multiAZ: false },
+    });
+    expect(result.score).toBeGreaterThanOrEqual(90);
+    expect(result.findings.map((finding) => finding.code)).toContain(
+      'CRITICAL_DATABASE_REPLICATED',
+    );
+    expect(result.findings.map((finding) => finding.code)).not.toContain(
+      'CRITICAL_DATABASE_SINGLE_AZ',
     );
   });
 

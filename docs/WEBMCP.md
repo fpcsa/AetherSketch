@@ -126,6 +126,12 @@ All five mutations execute the existing Architecture store actions with `actor="
 
 There is deliberately no `unlock_component`, `lock_component`, `set_constraints`, or generic arbitrary-action tool. Locks, constraints, and edit authorization are human controls.
 
+## Agent-session checkpoint and activity
+
+Enabling Agent Edit Mode captures a deep-cloned Architecture IR checkpoint after the human has set constraints and locks. It is held only in transient WebMCP UI state. The comparison engine runs deterministic analysis against the checkpoint and current IR, then reports before/after/delta cost, resilience, and security values together with ID-based added, changed, and removed entities.
+
+Successful WebMCP analysis and simulation calls append agent activity immediately, as do all mutation store actions. A mutation rejected with `COMPONENT_LOCKED` produces a visible blocked activity entry while preserving the architecture. Other recoverable tool failures are recorded with their structured code and message. These activity writes do not increment the Architecture revision or create undo history.
+
 ## Results and errors
 
 Every callback returns one of these compact envelopes:
@@ -198,14 +204,16 @@ Unsupported browsers retain the complete human editor, deterministic analysis, s
 ## Testing with ChatGPT's in-app browser
 
 1. Start AetherSketch locally or open its deployed Cloudflare URL in a ChatGPT in-app browser that exposes WebMCP.
-2. Wait for the top and bottom indicators to show **WebMCP Ready · Review Mode · 4 read tools · 0 edit tools**.
+2. Wait for the compact indicator to show **WebMCP Ready · Review · 4 tools**.
 3. Ask ChatGPT to use `get_architecture`, inspect a returned component ID, analyze a focus such as security, and simulate a component or availability-zone failure.
 4. Confirm that analysis opens the Analysis panel and simulation opens the Simulation panel with failed/degraded canvas styling.
 5. Lock a component and set any desired human constraints in the UI.
-6. Click **Enable editing**, confirm **Agent Editing Enabled · 4 read tools · 5 edit tools**, and ask ChatGPT to make a bounded change.
+6. Click **Enable editing**, confirm **WebMCP Ready · Agent Edit · 9 tools**, and ask ChatGPT to make a bounded change.
 7. Confirm the canvas and Agent activity entry update, and confirm an attempted update/removal of the locked component returns `COMPONENT_LOCKED`.
-8. Click **Disable editing**, confirm the edit tools disappear while read tools remain, and confirm existing architecture changes are retained.
+8. Click **Disable editing**, confirm the indicator returns to **Review · 4 tools**, and inspect the automatically opened baseline comparison. Existing architecture changes remain.
 9. In a development build, open WebMCP diagnostics to inspect the exact last invocation and result.
+
+The complete repeatable three-minute story, including exact baseline and target scores, is documented in [`DEMO.md`](DEMO.md).
 
 If the indicator stays **WebMCP Unavailable**, that browser surface does not currently expose the required API; continue using the human UI or test in a supported environment.
 

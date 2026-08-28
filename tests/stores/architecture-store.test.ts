@@ -347,6 +347,45 @@ describe('architecture local persistence', () => {
 
     expect(store.getState().architecture.name).toBe('Ecommerce Production');
     expect(store.getState().past).toEqual([]);
+    expect(store.getState().persistenceRecoveryNotice).toContain(
+      'canonical Ecommerce demo was restored safely',
+    );
+  });
+
+  it('reports recovery when saved JSON cannot be parsed', () => {
+    const memoryStorage = createMemoryStorage();
+    const malformedJson = '{"version":1,"state":';
+    memoryStorage.setItem(ARCHITECTURE_STORAGE_KEY, malformedJson);
+
+    const store = createArchitectureStore({
+      storage: createPersistStorage(memoryStorage),
+    });
+
+    expect(store.persist.hasHydrated()).toBe(true);
+    expect(store.getState().architecture.name).toBe('Ecommerce Production');
+    expect(store.getState().past).toEqual([]);
+    expect(store.getState().persistenceRecoveryNotice).toContain(
+      'canonical Ecommerce demo was restored safely',
+    );
+    expect(memoryStorage.getItem(ARCHITECTURE_STORAGE_KEY)).toBe(malformedJson);
+  });
+
+  it('completes hydration and reports an asynchronous storage read failure', async () => {
+    const memoryStorage = createMemoryStorage();
+    const storage = createPersistStorage({
+      ...memoryStorage,
+      getItem: () => Promise.reject(new Error('Storage read failed')),
+    });
+    const store = createArchitectureStore({ storage, skipHydration: true });
+
+    await store.persist.rehydrate();
+
+    expect(store.persist.hasHydrated()).toBe(true);
+    expect(store.getState().architecture.name).toBe('Ecommerce Production');
+    expect(store.getState().persistenceRecoveryNotice).toContain(
+      'canonical Ecommerce demo was restored safely',
+    );
+    expect(memoryStorage.getItem(ARCHITECTURE_STORAGE_KEY)).toBeNull();
   });
 
   it('uses browser localStorage through the versioned production key', () => {

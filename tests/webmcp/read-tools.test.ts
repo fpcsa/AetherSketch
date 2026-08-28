@@ -64,6 +64,21 @@ async function execute<T>(
 }
 
 describe('WebMCP read tools', () => {
+  it.each([undefined, {}])(
+    'accepts browser invocations without a signal: %j',
+    async (options) => {
+      const { tools } = createHarness();
+      const result = await toolNamed(tools, 'get_architecture').execute(
+        {},
+        options as WebMCP.ToolExecuteCallbackOptions,
+      );
+      expect(result).toMatchObject({
+        ok: true,
+        data: { metrics: { estimatedMonthlyCost: 675 } },
+      });
+    },
+  );
+
   it('exposes exactly four strictly-described read-only tools', () => {
     const { tools } = createHarness();
 

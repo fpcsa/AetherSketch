@@ -9,7 +9,7 @@ import { useIntelligenceStore } from '../../stores/intelligence-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
 
 const inputClass =
-  'mt-1 h-8 w-full border border-slate-700 bg-[#0a0f16] px-2 text-[10px] text-slate-200 outline-none placeholder:text-slate-700 focus:border-cyan-400/70';
+  'mt-1 h-8 w-full border border-slate-700 bg-[#0a0f16] px-2 text-[12px] text-slate-200 outline-none placeholder:text-slate-700 focus:border-cyan-400/70';
 
 const resultLabels: Record<ConstraintResult['id'], string> = {
   'cost-budget': 'Cost budget',
@@ -55,7 +55,7 @@ export function ConstraintsPanel() {
   return (
     <div className="space-y-3 px-3 py-3">
       <div className="grid grid-cols-2 gap-2">
-        <label className="block text-[8px] font-medium uppercase tracking-[0.1em] text-slate-600">
+        <label className="flex flex-col justify-end text-[10px] font-medium uppercase tracking-[0.1em] text-slate-600">
           Maximum monthly cost
           <input
             key={`budget:${constraints.maximumMonthlyCost ?? ''}`}
@@ -69,7 +69,7 @@ export function ConstraintsPanel() {
             }
           />
         </label>
-        <label className="block text-[8px] font-medium uppercase tracking-[0.1em] text-slate-600">
+        <label className="flex flex-col justify-end text-[10px] font-medium uppercase tracking-[0.1em] text-slate-600">
           Required region
           <input
             key={`region:${constraints.requiredRegion ?? ''}`}
@@ -83,7 +83,7 @@ export function ConstraintsPanel() {
             }
           />
         </label>
-        <label className="block text-[8px] font-medium uppercase tracking-[0.1em] text-slate-600">
+        <label className="flex flex-col justify-end text-[10px] font-medium uppercase tracking-[0.1em] text-slate-600">
           Target resilience
           <input
             key={`resilience:${constraints.targetResilienceScore ?? ''}`}
@@ -98,7 +98,7 @@ export function ConstraintsPanel() {
             }
           />
         </label>
-        <label className="block text-[8px] font-medium uppercase tracking-[0.1em] text-slate-600">
+        <label className="flex flex-col justify-end text-[10px] font-medium uppercase tracking-[0.1em] text-slate-600">
           Target security
           <input
             key={`security:${constraints.targetSecurityScore ?? ''}`}
@@ -132,11 +132,11 @@ export function ConstraintsPanel() {
 
       <div className="border border-slate-800/80 bg-slate-900/20">
         <div className="flex h-8 items-center border-b border-slate-800/70 px-2.5">
-          <p className="text-[8px] font-semibold uppercase tracking-[0.11em] text-slate-600">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.11em] text-slate-600">
             Constraint evaluation
           </p>
           {analysisStale ? (
-            <span className="ml-auto flex items-center gap-1 text-[8px] text-amber-300/80">
+            <span className="ml-auto flex items-center gap-1 text-[10px] text-amber-300/80">
               <RotateCw className="size-2.5" aria-hidden="true" />
               Stale
             </span>
@@ -168,10 +168,10 @@ export function ConstraintsPanel() {
                     }`}
                     aria-hidden="true"
                   />
-                  <span className="text-[9px] text-slate-500">
+                  <span className="text-[11px] text-slate-500">
                     {resultLabels[result.id]}
                   </span>
-                  <span className="ml-auto text-[8px] uppercase tracking-[0.08em] text-slate-600">
+                  <span className="ml-auto text-[10px] uppercase tracking-[0.08em] text-slate-600">
                     {result.status}
                   </span>
                 </li>
@@ -179,7 +179,7 @@ export function ConstraintsPanel() {
             })}
           </ul>
         ) : (
-          <p className="p-3 text-[9px] text-slate-600">
+          <p className="p-3 text-[11px] text-slate-600">
             Run analysis to evaluate constraints.
           </p>
         )}
@@ -188,7 +188,7 @@ export function ConstraintsPanel() {
       <button
         type="button"
         onClick={() => runAnalysis()}
-        className="flex h-8 w-full items-center justify-center gap-1.5 border border-cyan-400/30 bg-cyan-400/8 text-[10px] font-semibold text-cyan-200 transition-colors hover:bg-cyan-400/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80"
+        className="flex h-8 w-full items-center justify-center gap-1.5 border border-cyan-400/30 bg-cyan-400/8 text-[12px] font-semibold text-cyan-200 transition-colors hover:bg-cyan-400/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80"
       >
         <Play className="size-3" aria-hidden="true" />
         {analysisStale ? 'Rerun analysis' : 'Run analysis'}
@@ -207,7 +207,7 @@ function ConstraintToggle({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex min-h-9 items-center justify-between gap-2 border border-slate-800/70 bg-slate-900/20 px-2 text-[9px] text-slate-500">
+    <label className="flex min-h-9 items-center justify-between gap-2 border border-slate-800/70 bg-slate-900/20 px-2 text-[11px] text-slate-500">
       {label}
       <input
         type="checkbox"

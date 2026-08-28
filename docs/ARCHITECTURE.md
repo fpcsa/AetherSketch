@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document describes the provider-neutral Architecture IR, deterministic intelligence layer, complete human visual workspace, and Prompt 6 WebMCP authority boundary.
+This document describes the provider-neutral Architecture IR, deterministic intelligence layer, submission-quality visual workspace, WebMCP authority boundary, and Prompt 7 agent-session comparison.
 
 ## Runtime shape
 
@@ -23,6 +23,7 @@ The Cloudflare Vite plugin runs the React client and Worker together in developm
 - `src/components` owns small, presentation-focused workspace regions.
 - `src/architecture/model` defines the provider-neutral Architecture IR, strict runtime schemas, factories, and typed errors.
 - `src/architecture/catalog` defines safe defaults and optional AWS mappings for 21 typed component kinds, including provider-neutral serverless AI/LLM and agent concepts.
+- `src/architecture/comparison` computes before/after metrics and structural changes directly from two Architecture IR snapshots.
 - `src/architecture/analysis` contains pure validation, cost, score, constraint, and combined-analysis functions.
 - `src/architecture/simulation` contains pure component, availability-zone, and region failure simulation.
 - `src/architecture/serialization` is the schema-validated JSON boundary.
@@ -55,9 +56,17 @@ The AI palette category contains provider-neutral `serverless-ai` and `ai-agent`
 
 The right workspace panel switches between typed inspection, analysis, and simulation. Component configuration fields are generated from the discriminated IR configuration, while known enum properties use bounded selectors. Locked components disable architectural fields and deletion until explicitly unlocked. Connections have a dedicated inspector for type, protocol, encryption, and criticality.
 
-Constraints remain human-authored IR data. Their UI presents stale state after edits and explicit deterministic results after analysis. Findings can select and focus affected nodes or edges. Failure simulation remains a transient overlay and never writes to project persistence or history.
+Constraints remain human-authored IR data. Their UI presents stale state after edits and explicit deterministic results after analysis. Findings can select and focus affected nodes or edges. Failure simulation remains a transient overlay and never writes to project persistence or history. Failed and degraded nodes receive both icon/text overlays and semantic state, impacted edges are labeled as failed paths or reduced capacity, and a canvas-level headline makes operational status readable in a recorded demo.
 
-The top bar owns template/reset, validated JSON import/export, undo/redo, activity history, and the persisted dark/light theme toggle. Invalid imports are rejected before `loadArchitecture`, preserving the current project. A canvas-local error boundary also keeps the surrounding workspace and saved Architecture IR available if a third-party graph renderer fails.
+The top bar owns template/reset, validated JSON import/export, undo/redo, activity history, copyable demo prompts, and the persisted dark/light theme toggle. **Reset Demo** restores the canonical Ecommerce template and clears history, activity, simulation, Agent Edit authorization, selection, and the temporary comparison checkpoint. Invalid imports are rejected before `loadArchitecture`, preserving the current project. A canvas-local error boundary also keeps the surrounding workspace and saved Architecture IR available if a third-party graph renderer fails.
+
+## Agent-session comparison
+
+Enabling Agent Edit Mode clones the current Architecture IR into an in-memory baseline. The baseline includes the human's locks and constraints, so the comparison begins at the exact authority handoff rather than at a template constant. It is never an XYFlow snapshot.
+
+`compareArchitectures(baseline, current)` independently analyzes both immutable snapshots, reports before/after/delta values for estimated cost, resilience, and security, then matches components and connections by stable IR ID. It reports added and removed entities plus field-level changes for architecture fields, component configuration, positions, and semantic connection properties. Results are sorted deterministically. The comparison UI subscribes to live architecture state only while open, avoiding hidden analysis work during ordinary editing.
+
+Disabling Agent Edit Mode retains the baseline and opens the completed comparison. Loading/importing another project or using Reset Demo clears the baseline so comparisons cannot cross project boundaries.
 
 ## Intelligence boundary
 
@@ -65,7 +74,7 @@ All analysis functions accept an Architecture value and return structured result
 
 Findings have stable IDs, explicit rule codes, severity, category, human-readable explanation and remediation, component or edge references where relevant, and JSON evidence. Scores expose every numeric adjustment. Constraint evaluation compares calculated values against the Architecture's human-authored budget, target scores, required region, Multi-AZ requirement, and encryption-at-rest requirement.
 
-The intelligence store is deliberately separate from the persisted architecture store. Running or clearing analysis and simulation never changes the IR, activity log, or undo/redo history. When the architecture reference changes, an existing analysis is marked stale and any prior simulation is cleared. Re-running analysis binds results to the new architecture revision.
+The intelligence store is deliberately separate from the persisted architecture store. Running or clearing analysis and simulation never changes the IR or undo/redo history. The WebMCP adapter may append a non-mutating activity entry describing an agent-triggered analysis or simulation; that record is not part of the intelligence result and creates no architecture revision. When the architecture reference changes, an existing analysis is marked stale and any prior simulation is cleared. Re-running analysis binds results to the new architecture revision.
 
 See [`ANALYSIS.md`](ANALYSIS.md) for the rule model and limitations.
 
@@ -75,11 +84,11 @@ The Zustand architecture store exposes domain-oriented actions instead of encour
 
 Locked components reject configuration changes and removal through `COMPONENT_LOCKED`. Lock and unlock actions are intentionally human-only at the WebMCP boundary. Position changes use a dedicated human action and remain allowed. Removing an unlocked component also removes its connected semantic edges so the IR cannot become dangling.
 
-Undo and redo operate only on Architecture snapshots. Activity records remain an append-only audit view, while transient UI and intelligence state live in separate stores.
+Undo and redo operate only on Architecture snapshots. Activity records remain an append-only audit view during ordinary work, while transient UI and intelligence state live in separate stores. Canonical Reset Demo intentionally clears the audit view and both history branches for repeatable judging sessions.
 
 ## Persistence
 
-The store persists the current architecture, activity, and bounded undo/redo snapshots under the versioned key `aethersketch.architecture.v1`. Persistence uses browser localStorage when available and an in-memory fallback when storage access is unavailable. Rehydrated data is schema validated; invalid persisted state falls back safely to the Ecommerce template.
+The store persists the current architecture, activity, and bounded undo/redo snapshots under the versioned key `aethersketch.architecture.v1`. Persistence uses browser localStorage when available and an in-memory fallback when storage access is unavailable. Rehydrated data is schema validated; invalid persisted state falls back safely to the Ecommerce template and produces a visible recovery notice. Agent-session comparison and simulations are intentionally not persisted.
 
 No remote database or Cloudflare D1 binding is used.
 

@@ -18,14 +18,15 @@ import {
 import { isArchitectureDomainError } from '../../architecture/model';
 import {
   architectureTemplateIds,
-  DEFAULT_ARCHITECTURE_TEMPLATE_ID,
   type ArchitectureTemplateId,
 } from '../../templates';
 import { useArchitectureStore } from '../../stores/architecture-store';
 import { useIntelligenceStore } from '../../stores/intelligence-store';
 import { useThemeStore } from '../../stores/theme-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
+import { useWebMcpStore } from '../../webmcp';
 import { WebMcpStatus } from '../agent/WebMcpStatus';
+import { DemoPrompts } from './DemoPrompts';
 
 const iconButtonClass =
   'grid size-8 place-items-center border border-transparent text-slate-500 transition-colors enabled:hover:border-slate-700 enabled:hover:bg-slate-800 enabled:hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80';
@@ -82,6 +83,7 @@ export function TopBar() {
   const resetArchitecture = useArchitectureStore(
     (state) => state.resetArchitecture,
   );
+  const resetDemo = useArchitectureStore((state) => state.resetDemo);
   const createArchitecture = useArchitectureStore(
     (state) => state.createArchitecture,
   );
@@ -89,12 +91,18 @@ export function TopBar() {
     (state) => state.loadArchitecture,
   );
   const runAnalysis = useIntelligenceStore((state) => state.runAnalysis);
+  const clearSimulation = useIntelligenceStore(
+    (state) => state.clearSimulation,
+  );
   const clearSelection = useWorkspaceUiStore((state) => state.clearSelection);
+  const setActivePanel = useWorkspaceUiStore((state) => state.setActivePanel);
   const activityOpen = useWorkspaceUiStore((state) => state.activityOpen);
   const setActivityOpen = useWorkspaceUiStore((state) => state.setActivityOpen);
   const setNotice = useWorkspaceUiStore((state) => state.setNotice);
   const theme = useThemeStore((state) => state.theme);
   const toggleTheme = useThemeStore((state) => state.toggleTheme);
+  const resetAgentSession = useWebMcpStore((state) => state.resetAgentSession);
+  const setComparisonOpen = useWebMcpStore((state) => state.setComparisonOpen);
 
   const metadataTemplateId = architecture.metadata.templateId;
   const currentTemplate =
@@ -109,6 +117,7 @@ export function TopBar() {
     if (value === 'custom') {
       return;
     }
+    resetAgentSession();
     if (value === 'blank') {
       createArchitecture({
         name: 'Blank Architecture',
@@ -149,6 +158,7 @@ export function TopBar() {
 
     try {
       const imported = deserializeArchitecture(await file.text());
+      resetAgentSession();
       loadArchitecture(imported);
       clearSelection();
       runAnalysis();
@@ -164,9 +174,23 @@ export function TopBar() {
     }
   };
 
+  const resetCanonicalDemo = () => {
+    resetAgentSession();
+    resetDemo();
+    clearSimulation();
+    clearSelection();
+    setActivePanel('inspector');
+    setActivityOpen(false);
+    runAnalysis();
+    setNotice({
+      kind: 'success',
+      message: 'Canonical Ecommerce demo restored and session state cleared.',
+    });
+  };
+
   return (
-    <header className="flex h-[52px] shrink-0 items-center border-b border-slate-800/90 bg-[#0b0f15] px-3">
-      <div className="flex min-w-0 items-center">
+    <header className="flex h-[56px] shrink-0 items-center gap-2 whitespace-nowrap border-b border-slate-800/90 bg-[#0b0f15] px-3">
+      <div className="flex shrink-0 items-center">
         <div
           className="mr-2.5 grid size-7 place-items-center bg-cyan-400 text-slate-950"
           aria-hidden="true"
@@ -177,21 +201,21 @@ export function TopBar() {
           <span className="text-[13px] font-semibold tracking-[-0.01em] text-slate-100">
             AetherSketch
           </span>
-          <span className="text-[9px] font-medium uppercase tracking-[0.12em] text-slate-600 max-[1240px]:hidden">
+          <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-600 max-[1600px]:hidden">
             Architecture Copilot
           </span>
         </div>
       </div>
 
-      <div className="mx-3 h-5 w-px shrink-0 bg-slate-800" aria-hidden="true" />
+      <div className="mx-1 h-5 w-px shrink-0 bg-slate-800" aria-hidden="true" />
 
-      <div className="min-w-0 max-w-56">
+      <div className="w-48 min-w-36 max-w-56">
         <label className="sr-only" htmlFor="architecture-template">
           Architecture template
         </label>
         <select
           id="architecture-template"
-          className="h-8 max-w-full border border-slate-800 bg-[#0d121a] px-2 text-[10px] font-medium text-slate-300 outline-none focus:border-cyan-400/60"
+          className="h-8 max-w-full border border-slate-800 bg-[#0d121a] px-2 text-[12px] font-medium text-slate-300 outline-none focus:border-cyan-400/60"
           value={currentTemplate}
           onChange={(event) => loadTemplate(event.currentTarget.value)}
           title="Load an architecture template"
@@ -209,7 +233,7 @@ export function TopBar() {
       </div>
 
       <nav
-        className="ml-auto flex items-center gap-0.5"
+        className="ml-auto flex shrink-0 items-center gap-0.5"
         aria-label="Workspace actions"
       >
         <div className="mr-1 flex items-center border-r border-slate-800 pr-1.5">
@@ -247,22 +271,16 @@ export function TopBar() {
 
         <button
           type="button"
-          className={iconButtonClass}
-          aria-label="Reset current demo"
-          title="Reset the current template to its original architecture"
-          onClick={() => {
-            resetArchitecture(
-              currentTemplate === 'custom'
-                ? DEFAULT_ARCHITECTURE_TEMPLATE_ID
-                : currentTemplate,
-            );
-            clearSelection();
-            runAnalysis();
-            setNotice({ kind: 'success', message: 'Demo architecture reset.' });
-          }}
+          className="flex h-8 items-center gap-1.5 border border-cyan-400/25 bg-cyan-400/8 px-2.5 text-[11px] font-semibold text-cyan-200 transition-colors hover:bg-cyan-400/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80"
+          aria-label="Reset Demo"
+          title="Restore the canonical Ecommerce demo and clear history, simulation, edit mode, and comparison state"
+          onClick={resetCanonicalDemo}
         >
           <RotateCcw className="size-3.5" aria-hidden="true" />
+          <span>Reset Demo</span>
         </button>
+
+        <DemoPrompts />
 
         <input
           ref={fileInputRef}
@@ -274,19 +292,19 @@ export function TopBar() {
         />
         <button
           type="button"
-          className="flex h-8 items-center gap-1.5 border border-transparent px-2 text-[10px] font-medium text-slate-500 transition-colors hover:border-slate-700 hover:bg-slate-800 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80"
+          className="flex h-8 items-center gap-1.5 border border-transparent px-2 text-[12px] font-medium text-slate-500 transition-colors hover:border-slate-700 hover:bg-slate-800 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80"
           onClick={() => fileInputRef.current?.click()}
         >
           <Upload className="size-3.5" aria-hidden="true" />
-          <span className="max-[1120px]:sr-only">Import</span>
+          <span className="max-[1400px]:sr-only">Import</span>
         </button>
         <button
           type="button"
-          className="flex h-8 items-center gap-1.5 border border-transparent px-2 text-[10px] font-medium text-slate-500 transition-colors hover:border-slate-700 hover:bg-slate-800 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80"
+          className="flex h-8 items-center gap-1.5 border border-transparent px-2 text-[12px] font-medium text-slate-500 transition-colors hover:border-slate-700 hover:bg-slate-800 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80"
           onClick={exportArchitecture}
         >
           <Download className="size-3.5" aria-hidden="true" />
-          <span className="max-[1120px]:sr-only">Export</span>
+          <span className="max-[1400px]:sr-only">Export</span>
         </button>
         <button
           type="button"
@@ -294,11 +312,14 @@ export function TopBar() {
           aria-label="Activity history"
           title="Open activity history"
           aria-expanded={activityOpen}
-          onClick={() => setActivityOpen(!activityOpen)}
+          onClick={() => {
+            setComparisonOpen(false);
+            setActivityOpen(!activityOpen);
+          }}
         >
           <History className="size-3.5" aria-hidden="true" />
           {activityCount > 0 ? (
-            <span className="absolute right-0.5 top-0.5 min-w-3 bg-cyan-400 px-0.5 text-center text-[7px] font-bold leading-3 text-slate-950">
+            <span className="absolute right-0.5 top-0.5 min-w-3 bg-cyan-400 px-0.5 text-center text-[10px] font-bold leading-3 text-slate-950">
               {Math.min(activityCount, 99)}
             </span>
           ) : null}
@@ -306,7 +327,7 @@ export function TopBar() {
 
         <button
           type="button"
-          className="ml-1 flex h-8 items-center gap-1.5 border border-slate-800 bg-[#0d121a] px-2 text-[9px] font-medium text-slate-500 transition-colors hover:border-slate-700 hover:bg-slate-800 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80"
+          className="ml-1 flex h-8 items-center gap-1.5 border border-slate-800 bg-[#0d121a] px-2 text-[11px] font-medium text-slate-500 transition-colors hover:border-slate-700 hover:bg-slate-800 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80"
           onClick={toggleTheme}
           aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
           title={`Current theme: ${theme}. Switch to ${theme === 'dark' ? 'light' : 'dark'} mode.`}

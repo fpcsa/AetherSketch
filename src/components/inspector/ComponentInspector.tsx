@@ -52,7 +52,7 @@ const configurationOptions: Partial<
 };
 
 const inputClass =
-  'mt-1 h-8 w-full border border-slate-700 bg-[#0a0f16] px-2 text-[10px] text-slate-200 outline-none transition-colors placeholder:text-slate-700 focus:border-cyan-400/70 disabled:cursor-not-allowed disabled:opacity-45';
+  'mt-1 h-8 w-full border border-slate-700 bg-[#0a0f16] px-2 text-[12px] text-slate-200 outline-none transition-colors placeholder:text-slate-700 focus:border-cyan-400/70 disabled:cursor-not-allowed disabled:opacity-45';
 
 function formatPropertyName(name: string): string {
   return name
@@ -106,17 +106,17 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
       <div className="border-b border-slate-800/80 px-3 py-3">
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[11px] font-semibold text-slate-200">
+            <p className="truncate text-[13px] font-semibold text-slate-200">
               {component.name}
             </p>
-            <p className="mt-0.5 truncate text-[9px] text-slate-600">
+            <p className="mt-0.5 truncate text-[11px] text-slate-600">
               {catalogDescriptionMode === 'aws'
                 ? `${catalog.aws.displayName} · ${component.kind}`
                 : component.kind}
             </p>
           </div>
           <span
-            className={`border px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.08em] ${
+            className={`border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
               component.locked
                 ? 'border-amber-400/30 bg-amber-400/10 text-amber-300'
                 : 'border-emerald-400/20 bg-emerald-400/5 text-emerald-400/80'
@@ -130,7 +130,7 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
       <fieldset disabled={component.locked} className="space-y-3 px-3 py-3">
         <legend className="sr-only">Component properties</legend>
 
-        <label className="block text-[9px] font-medium uppercase tracking-[0.1em] text-slate-600">
+        <label className="block text-[11px] font-medium uppercase tracking-[0.1em] text-slate-600">
           Component name
           <input
             key={`${component.id}:name:${component.name}`}
@@ -145,7 +145,7 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
           />
         </label>
 
-        <label className="block text-[9px] font-medium uppercase tracking-[0.1em] text-slate-600">
+        <label className="block text-[11px] font-medium uppercase tracking-[0.1em] text-slate-600">
           Region
           <input
             key={`${component.id}:region:${component.region}`}
@@ -160,7 +160,7 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
           />
         </label>
 
-        <label className="block text-[9px] font-medium uppercase tracking-[0.1em] text-slate-600">
+        <label className="block text-[11px] font-medium uppercase tracking-[0.1em] text-slate-600">
           Availability zones
           <input
             key={`${component.id}:az:${component.availabilityZones.join(',')}`}
@@ -180,7 +180,7 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
         </label>
 
         {catalog.supportedProperties.includes('replicas') ? (
-          <label className="block text-[9px] font-medium uppercase tracking-[0.1em] text-slate-600">
+          <label className="block text-[11px] font-medium uppercase tracking-[0.1em] text-slate-600">
             Replicas
             <input
               key={`${component.id}:replicas:${component.replicas}`}
@@ -200,7 +200,7 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
         ) : null}
 
         <div className="border-t border-slate-800/70 pt-3">
-          <p className="mb-2 text-[9px] font-semibold uppercase tracking-[0.11em] text-slate-600">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.11em] text-slate-600">
             Service configuration
           </p>
           <div className="space-y-2.5">
@@ -212,7 +212,7 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
                 return (
                   <label
                     key={key}
-                    className="flex min-h-8 items-center justify-between gap-3 border border-slate-800/70 bg-slate-900/20 px-2.5 text-[10px] text-slate-400"
+                    className="flex min-h-8 items-center justify-between gap-3 border border-slate-800/70 bg-slate-900/20 px-2.5 text-[12px] text-slate-400"
                   >
                     <span>{label}</span>
                     <input
@@ -231,7 +231,7 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
                 return (
                   <label
                     key={key}
-                    className="block text-[9px] font-medium uppercase tracking-[0.1em] text-slate-600"
+                    className="block text-[11px] font-medium uppercase tracking-[0.1em] text-slate-600"
                   >
                     {label}
                     <select
@@ -254,7 +254,7 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
               return (
                 <label
                   key={key}
-                  className="block text-[9px] font-medium uppercase tracking-[0.1em] text-slate-600"
+                  className="block text-[11px] font-medium uppercase tracking-[0.1em] text-slate-600"
                 >
                   {label}
                   <input
@@ -282,10 +282,10 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
           </div>
         </div>
 
-        <label className="flex min-h-9 items-center justify-between gap-3 border border-slate-800/70 bg-slate-900/20 px-2.5 text-[10px] text-slate-400">
+        <label className="flex min-h-9 items-center justify-between gap-3 border border-slate-800/70 bg-slate-900/20 px-2.5 text-[12px] text-slate-400">
           <span>
             Critical component
-            <span className="mt-0.5 block text-[8px] text-slate-700">
+            <span className="mt-0.5 block text-[10px] text-slate-700">
               Included in critical-path analysis
             </span>
           </span>
@@ -301,7 +301,7 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
       </fieldset>
 
       {component.locked ? (
-        <p className="mx-3 border border-amber-400/20 bg-amber-400/5 p-2 text-[9px] leading-4 text-amber-200/70">
+        <p className="mx-3 border border-amber-400/20 bg-amber-400/5 p-2 text-[11px] leading-4 text-amber-200/70">
           Architectural properties are protected. Unlock this component to edit
           or delete it; canvas movement remains available.
         </p>
@@ -315,7 +315,7 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
               ? unlockComponent(component.id)
               : lockComponent(component.id)
           }
-          className="flex h-8 flex-1 items-center justify-center gap-1.5 border border-slate-700 text-[10px] font-medium text-slate-300 transition-colors hover:border-cyan-400/40 hover:text-cyan-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80"
+          className="flex h-8 flex-1 items-center justify-center gap-1.5 border border-slate-700 text-[12px] font-medium text-slate-300 transition-colors hover:border-cyan-400/40 hover:text-cyan-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80"
         >
           {component.locked ? (
             <UnlockKeyhole className="size-3" aria-hidden="true" />

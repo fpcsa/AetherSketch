@@ -19,6 +19,8 @@ Only the human UI can:
 
 Review Mode is always the default after a runtime starts. Disabling editing does not revert already accepted architecture changes.
 
+Enabling editing captures a read-only comparison checkpoint of the current IR, including human locks and constraints. The checkpoint grants no capability, is not persisted, and is cleared by project loads/imports and Reset Demo.
+
 ### Agent
 
 The agent can always use four registered read tools in supported browsers to inspect, analyze, and simulate the live Architecture IR. It can mutate only while the human has enabled Agent Edit Mode, and then only through five allowlisted operations: add, update, remove, connect, and disconnect.

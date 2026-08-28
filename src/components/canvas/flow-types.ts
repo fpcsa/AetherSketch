@@ -20,6 +20,7 @@ export type ArchitectureFlowNode = Node<
 export type ArchitectureEdgeData = {
   connection: ArchitectureConnection;
   impacted: boolean;
+  impactState: SimulationVisualState;
 };
 
 export type ArchitectureFlowEdge = Edge<

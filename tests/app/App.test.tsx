@@ -92,6 +92,11 @@ describe('AetherSketch application shell', () => {
     expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Import' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Export' })).toBeEnabled();
-    expect(screen.getAllByText('Unavailable')).toHaveLength(2);
+    expect(screen.getByText('Unavailable')).toBeVisible();
+    expect(screen.getByText('WebMCP unavailable')).toBeVisible();
+    expect(screen.getByText('Manual editing still works')).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Enable Agent Editing' }),
+    ).toBeDisabled();
   });
 });

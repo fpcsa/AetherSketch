@@ -52,7 +52,7 @@ export function InspectorSidebar() {
             key={id}
             type="button"
             onClick={() => setActivePanel(id)}
-            className={`flex items-center justify-center gap-1.5 border-b-2 text-[9px] font-semibold uppercase tracking-[0.09em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-400/80 ${
+            className={`flex items-center justify-center gap-1.5 border-b-2 text-[11px] font-semibold uppercase tracking-[0.09em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-400/80 ${
               activePanel === id
                 ? 'border-cyan-400 bg-cyan-400/5 text-cyan-200'
                 : 'border-transparent text-slate-600 hover:bg-slate-900/50 hover:text-slate-300'
@@ -70,7 +70,7 @@ export function InspectorSidebar() {
       {activePanel === 'inspector' ? (
         <div className="flex min-h-0 flex-1 flex-col">
           <section
-            className="flex min-h-0 flex-[1.15] flex-col"
+            className={`flex min-h-0 flex-col ${selectedComponent || selectedConnection ? 'flex-[1.15]' : 'h-60 shrink-0'}`}
             aria-labelledby="inspector-title"
           >
             <div className="flex h-9 shrink-0 items-center border-b border-slate-800/80 px-3">
@@ -80,11 +80,11 @@ export function InspectorSidebar() {
               />
               <h2
                 id="inspector-title"
-                className="text-[10px] font-semibold uppercase tracking-[0.11em] text-slate-400"
+                className="text-[12px] font-semibold uppercase tracking-[0.11em] text-slate-400"
               >
                 Inspector
               </h2>
-              <span className="ml-auto text-[8px] uppercase tracking-[0.1em] text-slate-700">
+              <span className="ml-auto text-[10px] uppercase tracking-[0.1em] text-slate-700">
                 {selectedComponent
                   ? 'Component'
                   : selectedConnection
@@ -106,14 +106,14 @@ export function InspectorSidebar() {
                       aria-hidden="true"
                     />
                   </div>
-                  <p className="mt-3 text-[10px] font-medium text-slate-400">
+                  <p className="mt-3 text-[12px] font-medium text-slate-400">
                     Select an architecture element
                   </p>
-                  <p className="mt-1.5 text-[9px] leading-4 text-slate-700">
+                  <p className="mt-1.5 text-[11px] leading-4 text-slate-700">
                     Click a node or edge to edit its typed properties. Connect
                     nodes by dragging between their ports.
                   </p>
-                  <p className="mt-3 font-mono text-[8px] text-slate-700">
+                  <p className="mt-3 font-mono text-[10px] text-slate-700">
                     {architecture.components.length} components ·{' '}
                     {architecture.connections.length} connections
                   </p>
@@ -133,7 +133,7 @@ export function InspectorSidebar() {
               />
               <h2
                 id="constraints-title"
-                className="text-[10px] font-semibold uppercase tracking-[0.11em] text-slate-400"
+                className="text-[12px] font-semibold uppercase tracking-[0.11em] text-slate-400"
               >
                 Architecture Constraints
               </h2>

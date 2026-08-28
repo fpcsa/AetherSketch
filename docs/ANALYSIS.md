@@ -56,6 +56,7 @@ Resilience begins at 90 and applies these deterministic adjustments:
 | ----------------------------------------------- | ---------: |
 | Critical SQL database is single-AZ              |        -12 |
 | Critical SQL database is Multi-AZ               |         +4 |
+| Critical SQL database has a cross-AZ replica    |         +4 |
 | Database backups disabled                       |         -7 |
 | Critical provisioned compute is single-AZ       |         -8 |
 | Critical provisioned compute has one replica    |         -7 |
@@ -66,7 +67,7 @@ Resilience begins at 90 and applies these deterministic adjustments:
 | Critical path contains non-redundant components |         -6 |
 | Every critical component is redundant           |         +3 |
 
-The final value is rounded and clamped to 0–100. The initial Ecommerce template scores **57**. A tested hardened variant with three ECS replicas across two zones and Multi-AZ RDS scores **100**, satisfying the milestone's 90+ target.
+The final value is rounded and clamped to 0–100. A SQL database is redundant when it either models native Multi-AZ capacity or has a same-kind peer connected by a `replication` edge with capacity in another availability zone. The initial Ecommerce template scores **57**. The canonical locked-database demo adds two-zone ECS capacity, an independent PostgreSQL replica, and durable buffering; it scores **100**, satisfying the 90+ target without altering the locked primary database.
 
 The score evaluates modeled structure only. It is not an availability forecast, SLA, recovery-time calculation, or substitute for load and failover testing.
 
@@ -113,10 +114,12 @@ The analyzer reports `met`, `not-met`, or `not-applicable` for:
 - `availability-zone`: fails single-zone capacity and degrades components with modeled surviving capacity in another zone;
 - `region`: fails regional components while retaining explicitly global component kinds.
 
+For availability-zone simulations, a component also retains degraded service when a same-kind replication peer connected through a `replication` edge survives outside the failed zone. This lets the canonical demo preserve the locked PostgreSQL primary while explicitly modeling separate failover capacity.
+
 The result identifies failed and degraded components, impacted edges, surviving components, critical-path reachability, overall status, explanation, and structured findings. Simulation never mutates architecture state.
 
 The graph model does not simulate traffic volume, latency, dependency timeouts, capacity exhaustion, health-check timing, data loss, cross-region failover, recovery duration, or cascading behavior beyond reachability. It is deterministic design feedback, not a production incident forecast.
 
 ## Transient result lifecycle
 
-Analysis and simulation results live in `useIntelligenceStore`, not in persisted project state. A run records the Architecture revision used. An Architecture change marks analysis stale and clears the prior simulation; users or future tools must explicitly rerun analysis. Clearing or running intelligence operations never creates undo history or activity entries.
+Analysis and simulation results live in `useIntelligenceStore`, not in persisted project state. A run records the Architecture revision used. An Architecture change marks analysis stale and clears the prior simulation; users or tools must explicitly rerun analysis. Intelligence operations never create undo history. When WebMCP initiates a successful analysis or simulation, the adapter separately appends an agent activity entry so the shared UI reflects the action in near real time.

@@ -8,7 +8,7 @@ ChatGPT is the copilot. AetherSketch does **not** embed a chatbot, call an LLM A
 
 ## Current status
 
-This repository currently implements the Prompt 6 human-authorized Agent Edit Mode milestone:
+This repository currently implements the Prompt 7 submission-quality demo milestone:
 
 - a compact, desktop-first architecture workspace built on XYFlow;
 - a strongly typed, provider-neutral Architecture IR with an explicit schema version;
@@ -32,11 +32,17 @@ This repository currently implements the Prompt 6 human-authorized Agent Edit Mo
 - dynamic, signal-owned registration of exactly five mutation tools while editing is authorized;
 - safe add/update/remove/connect/disconnect adapters with strict schemas, kind validation, automatic placement, and agent activity attribution;
 - defense-in-depth permission checks plus human-only component locks and architecture constraints;
+- an immutable Agent Edit baseline checkpoint plus deterministic Architecture IR comparison with before/after cost and scores, numeric deltas, and added/changed/removed structure;
+- near-real-time human, agent, and system activity presentation, including visibly blocked attempts against locked components;
+- high-contrast failure overlays, textual node and edge impact states, and an explicit operational/degraded/unavailable summary;
+- a one-click canonical demo reset that clears architecture history, simulation, edit authority, activity, and temporary comparison state;
+- copyable three-minute demo prompts that never leave the page or invoke an LLM;
+- graceful invalid-import, invalid-target, unsupported-browser, registration-failure, missing-resource, and corrupted-persistence states;
 - truthful unavailable, initializing, ready, and registration-error lifecycle status plus development-only diagnostics;
 - Cloudflare Workers + static-assets integration with `GET /api/health`;
 - strict TypeScript, ESLint, Prettier, Vitest, and domain/store/component/Worker tests.
 
-WebMCP starts in **Review Mode** with `get_architecture`, `inspect_component`, `analyze_architecture`, and `simulate_failure`. Agent-triggered analysis and simulation operate through the same stores as the human UI and visibly open their panels and canvas overlays. When a human explicitly enables Agent Editing, `add_component`, `update_component`, `remove_component`, `connect_components`, and `disconnect_components` are registered for that authorization window. The regular human workspace remains fully usable when WebMCP is unavailable.
+WebMCP starts in **Review Mode** with `get_architecture`, `inspect_component`, `analyze_architecture`, and `simulate_failure`. Agent-triggered analysis and simulation operate through the same stores as the human UI, visibly open their panels and canvas overlays, and append agent-attributed activity. When a human explicitly enables Agent Editing, the application captures the current Architecture IR as the session baseline and registers `add_component`, `update_component`, `remove_component`, `connect_components`, and `disconnect_components` for that authorization window. Disabling editing opens the deterministic before/after comparison while leaving accepted architecture changes intact. The regular human workspace remains fully usable when WebMCP is unavailable.
 
 ## Architecture
 
@@ -47,6 +53,7 @@ src/
   architecture/
     analysis/           Deterministic validation, cost, scoring, constraints
     catalog/            AWS-first component catalog and creation defaults
+    comparison/         Deterministic session metric and structural IR diff
     model/              Provider-neutral IR, Zod schemas, errors, factories
     serialization/      Validated JSON import/export boundary
     simulation/         Deterministic component, AZ, and region failures
@@ -94,10 +101,12 @@ Connections describe architectural meaning (`request`, `async`, `data`, `replica
 
 `useArchitectureStore` exposes these domain actions:
 
-- project lifecycle: `createArchitecture`, `loadArchitecture`, `renameArchitecture`, `resetArchitecture`;
+- project lifecycle: `createArchitecture`, `loadArchitecture`, `renameArchitecture`, `resetArchitecture`, `resetDemo`;
 - components: `addComponent`, `updateComponent`, `removeComponent`, `moveComponent`, `lockComponent`, `unlockComponent`;
 - connections and constraints: `connectComponents`, `updateConnection`, `disconnectComponents`, `setConstraints`;
 - history: `undo`, `redo`.
+
+`recordActivity` records non-mutating tool outcomes without creating an architecture revision or undo snapshot.
 
 Every mutation accepts `human`, `agent`, or `system` actor attribution and records a structured activity entry. Locked components may still be inspected or moved, but cannot be configured or removed until explicitly unlocked. Architecture snapshots—not transient UI state—power undo and redo.
 
@@ -112,6 +121,12 @@ Customer Traffic
 ```
 
 The single-AZ compute and database tiers are intentional weaknesses that make the analysis and failure-simulation panels immediately useful.
+
+### Canonical three-minute demo
+
+The canonical Ecommerce template starts at **$675/month**, **57 resilience**, and **76 security**. The human sets a $3,000 budget and a 90 resilience target, then locks Orders Database before enabling Agent Edit Mode. A tested agent transformation preserves that locked, single-AZ PostgreSQL component while adding independent PostgreSQL failover capacity in another zone, multi-AZ ECS capacity, a WAF, durable queue, and secrets manager.
+
+That target Architecture IR evaluates to **$1,288/month**, **100 resilience**, and **90 security**. Simulating the loss of `eu-west-1a` leaves the modeled critical path reachable and reports the system as **degraded**, not unavailable. The session comparison reports the exact metric deltas and every added, changed, and removed IR entity. See [docs/DEMO.md](docs/DEMO.md) for the complete walkthrough.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the current boundaries and planned extension points.
 

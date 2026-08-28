@@ -139,6 +139,64 @@ export function isComponentRedundant(
   }
 }
 
+export function replicationPeers(
+  architecture: Architecture,
+  component: ArchitectureComponent,
+): ArchitectureComponent[] {
+  const peerIds = architecture.connections
+    .filter(
+      (connection) =>
+        connection.type === 'replication' &&
+        (connection.source === component.id ||
+          connection.target === component.id),
+    )
+    .map((connection) =>
+      connection.source === component.id
+        ? connection.target
+        : connection.source,
+    );
+
+  return peerIds
+    .map((peerId) =>
+      architecture.components.find((candidate) => candidate.id === peerId),
+    )
+    .filter(
+      (candidate): candidate is ArchitectureComponent =>
+        Boolean(candidate) && candidate?.kind === component.kind,
+    );
+}
+
+export function hasIndependentReplicationPeer(
+  architecture: Architecture,
+  component: ArchitectureComponent,
+  failedAvailabilityZone?: string,
+): boolean {
+  return replicationPeers(architecture, component).some((peer) => {
+    if (failedAvailabilityZone) {
+      return (
+        !peer.availabilityZones.includes(failedAvailabilityZone) ||
+        isComponentRedundant(peer)
+      );
+    }
+
+    return (
+      peer.availabilityZones.some(
+        (zone) => !component.availabilityZones.includes(zone),
+      ) || isComponentRedundant(peer)
+    );
+  });
+}
+
+export function isComponentRedundantInArchitecture(
+  architecture: Architecture,
+  component: ArchitectureComponent,
+): boolean {
+  return (
+    isComponentRedundant(component) ||
+    hasIndependentReplicationPeer(architecture, component)
+  );
+}
+
 export function architectureEntryIds(architecture: Architecture): string[] {
   const incomingCounts = new Map(
     architecture.components.map((component) => [component.id, 0]),

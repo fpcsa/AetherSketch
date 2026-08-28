@@ -66,14 +66,14 @@ const ecommerceProductionTemplate = template({
       kind: 'internet',
       name: 'Customer Traffic',
       provider: 'generic',
-      position: { x: 40, y: 220 },
+      position: { x: 48, y: 48 },
       critical: true,
     }),
     component({
       id: 'ecommerce-cloudfront',
       kind: 'cdn',
       name: 'Storefront CDN',
-      position: { x: 260, y: 220 },
+      position: { x: 352, y: 48 },
       critical: true,
     }),
     component({
@@ -81,7 +81,7 @@ const ecommerceProductionTemplate = template({
       kind: 'load-balancer',
       name: 'Public Application Load Balancer',
       availabilityZones: ['eu-west-1a', 'eu-west-1b'],
-      position: { x: 500, y: 220 },
+      position: { x: 48, y: 256 },
       critical: true,
     }),
     component({
@@ -91,7 +91,7 @@ const ecommerceProductionTemplate = template({
       availabilityZones: ['eu-west-1a'],
       replicas: 1,
       configuration: { autoscaling: false },
-      position: { x: 740, y: 220 },
+      position: { x: 352, y: 256 },
       critical: true,
     }),
     component({
@@ -106,7 +106,7 @@ const ecommerceProductionTemplate = template({
         backupsEnabled: true,
         publicAccess: false,
       },
-      position: { x: 980, y: 220 },
+      position: { x: 352, y: 464 },
       critical: true,
     }),
   ],

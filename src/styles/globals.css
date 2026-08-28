@@ -82,8 +82,8 @@
 }
 
 .react-flow__controls-button {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border: 0;
   border-bottom: 1px solid rgb(30 41 59 / 80%);
   border-radius: 0;
@@ -121,6 +121,11 @@
 
 .react-flow__attribution {
   display: none;
+}
+
+html[data-theme='dark'] [class~='text-slate-600'],
+html[data-theme='dark'] [class~='text-slate-700'] {
+  color: #94a3b8;
 }
 
 html[data-theme='light'] {
@@ -191,7 +196,9 @@ html[data-theme='light'] [class~='bg-rose-950/95'] {
   background-color: rgb(255 228 230 / 96%);
 }
 
-html[data-theme='light'] [class~='bg-amber-950/50'] {
+html[data-theme='light'] [class~='bg-amber-950/50'],
+html[data-theme='light'] [class~='bg-amber-950/90'],
+html[data-theme='light'] [class~='bg-amber-950/95'] {
   background-color: rgb(254 243 199 / 90%);
 }
 
@@ -247,7 +254,7 @@ html[data-theme='light'] [class~='text-slate-600'] {
 }
 
 html[data-theme='light'] [class~='text-slate-700'] {
-  color: #8493a7;
+  color: #64748b;
 }
 
 html[data-theme='light'] [class~='text-cyan-200'],

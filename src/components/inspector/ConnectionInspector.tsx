@@ -9,7 +9,7 @@ import { useArchitectureStore } from '../../stores/architecture-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
 
 const inputClass =
-  'mt-1 h-8 w-full border border-slate-700 bg-[#0a0f16] px-2 text-[10px] text-slate-200 outline-none focus:border-cyan-400/70';
+  'mt-1 h-8 w-full border border-slate-700 bg-[#0a0f16] px-2 text-[12px] text-slate-200 outline-none focus:border-cyan-400/70';
 
 type ConnectionInspectorProps = {
   connection: ArchitectureConnection;
@@ -34,10 +34,10 @@ export function ConnectionInspector({ connection }: ConnectionInspectorProps) {
   return (
     <div className="min-h-0 flex-1 overflow-auto">
       <div className="border-b border-slate-800/80 px-3 py-3">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.11em] text-slate-600">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.11em] text-slate-600">
           Connection
         </p>
-        <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-300">
+        <div className="mt-2 flex items-center gap-2 text-[12px] text-slate-300">
           <span className="min-w-0 flex-1 truncate">
             {source?.name ?? connection.source}
           </span>
@@ -53,7 +53,7 @@ export function ConnectionInspector({ connection }: ConnectionInspectorProps) {
 
       <fieldset className="space-y-3 px-3 py-3">
         <legend className="sr-only">Connection properties</legend>
-        <label className="block text-[9px] font-medium uppercase tracking-[0.1em] text-slate-600">
+        <label className="block text-[11px] font-medium uppercase tracking-[0.1em] text-slate-600">
           Connection type
           <select
             className={inputClass}
@@ -72,7 +72,7 @@ export function ConnectionInspector({ connection }: ConnectionInspectorProps) {
           </select>
         </label>
 
-        <label className="block text-[9px] font-medium uppercase tracking-[0.1em] text-slate-600">
+        <label className="block text-[11px] font-medium uppercase tracking-[0.1em] text-slate-600">
           Protocol
           <input
             key={`${connection.id}:protocol:${connection.protocol ?? ''}`}
@@ -90,7 +90,7 @@ export function ConnectionInspector({ connection }: ConnectionInspectorProps) {
           />
         </label>
 
-        <label className="flex min-h-9 items-center justify-between border border-slate-800/70 bg-slate-900/20 px-2.5 text-[10px] text-slate-400">
+        <label className="flex min-h-9 items-center justify-between border border-slate-800/70 bg-slate-900/20 px-2.5 text-[12px] text-slate-400">
           Encrypted transport
           <input
             type="checkbox"
@@ -104,7 +104,7 @@ export function ConnectionInspector({ connection }: ConnectionInspectorProps) {
           />
         </label>
 
-        <label className="flex min-h-9 items-center justify-between border border-slate-800/70 bg-slate-900/20 px-2.5 text-[10px] text-slate-400">
+        <label className="flex min-h-9 items-center justify-between border border-slate-800/70 bg-slate-900/20 px-2.5 text-[12px] text-slate-400">
           Critical path
           <input
             type="checkbox"
@@ -126,7 +126,7 @@ export function ConnectionInspector({ connection }: ConnectionInspectorProps) {
             disconnectComponents(connection.id);
             clearSelection();
           }}
-          className="flex h-8 w-full items-center justify-center gap-1.5 border border-slate-700 text-[10px] font-medium text-slate-400 transition-colors hover:border-rose-400/50 hover:text-rose-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/70"
+          className="flex h-8 w-full items-center justify-center gap-1.5 border border-slate-700 text-[12px] font-medium text-slate-400 transition-colors hover:border-rose-400/50 hover:text-rose-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/70"
         >
           <Trash2 className="size-3" aria-hidden="true" />
           Delete connection

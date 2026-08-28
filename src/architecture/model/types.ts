@@ -221,7 +221,11 @@ export type ArchitectureAction =
   | 'connection.removed'
   | 'constraints.updated'
   | 'history.undo'
-  | 'history.redo';
+  | 'history.redo'
+  | 'webmcp.analysis.completed'
+  | 'webmcp.simulation.completed'
+  | 'webmcp.action.blocked'
+  | 'webmcp.action.failed';
 
 export type ActivityEntry = {
   id: string;

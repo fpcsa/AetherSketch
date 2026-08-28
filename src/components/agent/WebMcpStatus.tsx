@@ -1,6 +1,15 @@
-import { Braces, Bug, Pencil, ShieldCheck, X } from 'lucide-react';
+import {
+  Braces,
+  Bug,
+  GitCompareArrows,
+  Pencil,
+  ShieldCheck,
+  X,
+} from 'lucide-react';
 import { useState } from 'react';
 
+import { useArchitectureStore } from '../../stores/architecture-store';
+import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
 import { type WebMcpLifecycleStatus, useWebMcpStore } from '../../webmcp';
 
 type WebMcpStatusProps = {
@@ -38,7 +47,7 @@ const statusPresentation: Record<
 
 function JsonValue({ value }: { value: unknown }) {
   return (
-    <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words border border-slate-800 bg-[#090d13] p-2 font-mono text-[10px] leading-relaxed text-slate-400">
+    <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words border border-slate-800 bg-[#090d13] p-2 font-mono text-[12px] leading-relaxed text-slate-400">
       {JSON.stringify(value, null, 2)}
     </pre>
   );
@@ -67,7 +76,7 @@ function DebugPanel({ onClose }: { onClose: () => void }) {
           <p className="text-xs font-semibold text-slate-200">
             WebMCP diagnostics
           </p>
-          <p className="mt-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-500">
+          <p className="mt-0.5 text-[12px] uppercase tracking-[0.12em] text-slate-500">
             Development only
           </p>
         </div>
@@ -81,7 +90,7 @@ function DebugPanel({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      <dl className="grid grid-cols-[6rem_1fr] gap-x-3 gap-y-2 text-[11px]">
+      <dl className="grid grid-cols-[6rem_1fr] gap-x-3 gap-y-2 text-[13px]">
         <dt className="text-slate-500">Mode</dt>
         <dd className="font-medium text-slate-300">
           {mode === 'review' ? 'Review Mode · read only' : 'Agent Edit Mode'}
@@ -98,7 +107,7 @@ function DebugPanel({ onClose }: { onClose: () => void }) {
 
       {registrationError ? (
         <div className="mt-3">
-          <p className="mb-1 text-[10px] uppercase tracking-[0.12em] text-rose-400">
+          <p className="mb-1 text-[12px] uppercase tracking-[0.12em] text-rose-400">
             Registration error
           </p>
           <JsonValue value={{ message: registrationError }} />
@@ -107,7 +116,7 @@ function DebugPanel({ onClose }: { onClose: () => void }) {
 
       {editRegistrationError ? (
         <div className="mt-3">
-          <p className="mb-1 text-[10px] uppercase tracking-[0.12em] text-rose-400">
+          <p className="mb-1 text-[12px] uppercase tracking-[0.12em] text-rose-400">
             Edit registration error
           </p>
           <JsonValue value={{ message: editRegistrationError }} />
@@ -116,17 +125,17 @@ function DebugPanel({ onClose }: { onClose: () => void }) {
 
       <div className="mt-3 grid gap-3">
         <div>
-          <p className="mb-1 text-[10px] uppercase tracking-[0.12em] text-slate-500">
+          <p className="mb-1 text-[12px] uppercase tracking-[0.12em] text-slate-500">
             Last invocation
           </p>
           {lastInvocation ? (
             <JsonValue value={lastInvocation} />
           ) : (
-            <p className="text-[11px] text-slate-600">No invocation yet.</p>
+            <p className="text-[13px] text-slate-600">No invocation yet.</p>
           )}
         </div>
         <div>
-          <p className="mb-1 text-[10px] uppercase tracking-[0.12em] text-slate-500">
+          <p className="mb-1 text-[12px] uppercase tracking-[0.12em] text-slate-500">
             Last result / error
           </p>
           {lastError ? (
@@ -134,7 +143,7 @@ function DebugPanel({ onClose }: { onClose: () => void }) {
           ) : lastResult ? (
             <JsonValue value={lastResult} />
           ) : (
-            <p className="text-[11px] text-slate-600">No result yet.</p>
+            <p className="text-[13px] text-slate-600">No result yet.</p>
           )}
         </div>
       </div>
@@ -151,50 +160,74 @@ export function WebMcpStatus({ compact = false }: WebMcpStatusProps) {
   );
   const readToolCount = useWebMcpStore((state) => state.readTools.length);
   const editToolCount = useWebMcpStore((state) => state.editTools.length);
+  const baseline = useWebMcpStore((state) => state.agentSessionBaseline);
+  const comparisonOpen = useWebMcpStore((state) => state.comparisonOpen);
+  const setComparisonOpen = useWebMcpStore((state) => state.setComparisonOpen);
   const enableAgentEditing = useWebMcpStore(
     (state) => state.enableAgentEditing,
   );
   const disableAgentEditing = useWebMcpStore(
     (state) => state.disableAgentEditing,
   );
+  const setActivityOpen = useWorkspaceUiStore((state) => state.setActivityOpen);
   const presentation = statusPresentation[status];
-  const modeLabel =
-    mode === 'review'
-      ? 'Review Mode'
-      : editRegistrationStatus === 'ready'
-        ? 'Agent Editing Enabled'
-        : editRegistrationStatus === 'error'
-          ? 'Agent Editing Error'
-          : 'Enabling Agent Editing';
   const readyDetail = status === 'ready';
+  const totalToolCount = readToolCount + editToolCount;
+  const editFailed = mode === 'edit' && editRegistrationStatus === 'error';
+  const shortModeLabel =
+    mode === 'review'
+      ? 'Review'
+      : editFailed
+        ? 'Edit error'
+        : editRegistrationStatus === 'initializing'
+          ? 'Enabling edits'
+          : 'Agent Edit';
+  const modeTone = editFailed
+    ? 'text-rose-400'
+    : mode === 'edit'
+      ? 'text-amber-400'
+      : 'text-slate-500';
+  const statusTitle = editFailed
+    ? `Edit-tool registration failed. ${readToolCount} read-only tools remain available. Disable and re-enable editing to retry. Manual editing still works.`
+    : presentation.title;
+  const statusDot = editFailed ? 'bg-rose-400' : presentation.dot;
+
+  const toggleEditing = () => {
+    if (mode === 'edit') {
+      disableAgentEditing();
+      setActivityOpen(false);
+      setComparisonOpen(true);
+      return;
+    }
+    enableAgentEditing(useArchitectureStore.getState().architecture);
+  };
 
   if (compact) {
     return (
       <div
-        className="flex items-center gap-2 text-[11px] text-slate-400"
-        title={presentation.title}
+        className="flex items-center gap-2 text-[13px] text-slate-400"
+        title={statusTitle}
         role="status"
         aria-live="polite"
       >
         <span
-          className={`size-1.5 rounded-full ${presentation.dot}`}
+          className={`size-1.5 rounded-full ${statusDot}`}
           aria-hidden="true"
         />
-        <span>WebMCP</span>
-        <span className="text-slate-600">·</span>
-        <span className="text-slate-500">{presentation.label}</span>
+        <span>
+          WebMCP {status === 'unavailable' ? 'unavailable' : presentation.label}
+        </span>
         {readyDetail ? (
           <>
             <span className="text-slate-700">·</span>
-            <span
-              className={mode === 'edit' ? 'text-amber-400' : 'text-slate-500'}
-            >
-              {modeLabel}
-            </span>
+            <span className={modeTone}>{shortModeLabel}</span>
             <span className="text-slate-700">·</span>
-            <span className="text-slate-600">{readToolCount} read tools</span>
+            <span className="text-slate-600">{totalToolCount} tools</span>
+          </>
+        ) : status === 'unavailable' || status === 'error' ? (
+          <>
             <span className="text-slate-700">·</span>
-            <span className="text-slate-600">{editToolCount} edit tools</span>
+            <span className="text-slate-600">Manual editing still works</span>
           </>
         ) : null}
       </div>
@@ -205,33 +238,31 @@ export function WebMcpStatus({ compact = false }: WebMcpStatusProps) {
     <div className="relative flex items-center">
       <div className="flex h-8 items-center border border-slate-800 bg-[#0d121a]">
         <div
-          className="flex h-full items-center gap-2 px-2.5 text-[11px] text-slate-400"
-          title={presentation.title}
+          className="flex h-full items-center gap-2 px-2.5 text-[13px] text-slate-400"
+          title={statusTitle}
           role="status"
           aria-live="polite"
         >
           <Braces className="size-3.5 text-slate-500" aria-hidden="true" />
           <span
-            className={`size-1.5 rounded-full ${presentation.dot}`}
+            className={`size-1.5 rounded-full ${statusDot}`}
             aria-hidden="true"
           />
           <span className="font-medium">WebMCP</span>
           <span className="text-slate-600">{presentation.label}</span>
           {readyDetail ? (
             <>
-              <span className="border-l border-slate-800 pl-2 text-slate-500 max-[1240px]:hidden">
-                {modeLabel}
+              <span className={`border-l border-slate-800 pl-2 ${modeTone}`}>
+                {shortModeLabel}
               </span>
-              <span className="text-slate-600 max-[1240px]:hidden">
-                {readToolCount} read / {editToolCount} edit
-              </span>
+              <span className="text-slate-600">{totalToolCount} tools</span>
             </>
           ) : null}
         </div>
 
         <button
           type="button"
-          className={`flex h-full items-center gap-1.5 border-l px-2.5 text-[11px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 disabled:cursor-not-allowed disabled:text-slate-700 ${
+          className={`flex h-full items-center gap-1.5 border-l px-2.5 text-[13px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 disabled:cursor-not-allowed disabled:text-slate-700 ${
             mode === 'edit'
               ? 'border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/15'
               : 'border-slate-800 text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
@@ -248,7 +279,7 @@ export function WebMcpStatus({ compact = false }: WebMcpStatusProps) {
                 : 'Temporarily register five mutation tools for an authorized agent.'
               : 'Agent editing requires WebMCP support and successful read-tool registration.'
           }
-          onClick={mode === 'edit' ? disableAgentEditing : enableAgentEditing}
+          onClick={toggleEditing}
         >
           {mode === 'edit' ? (
             <Pencil className="size-3" aria-hidden="true" />
@@ -264,6 +295,26 @@ export function WebMcpStatus({ compact = false }: WebMcpStatusProps) {
           </span>
         </button>
       </div>
+
+      {baseline ? (
+        <button
+          type="button"
+          className={`ml-1 grid size-8 place-items-center border bg-[#0d121a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+            comparisonOpen
+              ? 'border-violet-400/40 text-violet-300'
+              : 'border-slate-800 text-slate-500 hover:border-violet-400/30 hover:text-violet-300'
+          }`}
+          aria-label="View agent session comparison"
+          aria-expanded={comparisonOpen}
+          onClick={() => {
+            setActivityOpen(false);
+            setComparisonOpen(!comparisonOpen);
+          }}
+          title="Compare the current Architecture IR with the Agent Edit baseline"
+        >
+          <GitCompareArrows className="size-3.5" aria-hidden="true" />
+        </button>
+      ) : null}
 
       {import.meta.env.DEV ? (
         <button

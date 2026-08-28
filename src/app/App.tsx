@@ -1,7 +1,9 @@
 import { ArchitectureCanvas } from '../components/canvas/ArchitectureCanvas';
+import { AgentSessionComparison } from '../components/agent/AgentSessionComparison';
 import { CanvasErrorBoundary } from '../components/canvas/CanvasErrorBoundary';
 import { InspectorSidebar } from '../components/inspector/InspectorSidebar';
 import { ActivityDrawer } from '../components/layout/ActivityDrawer';
+import { PersistenceRecoveryNotice } from '../components/layout/PersistenceRecoveryNotice';
 import { StatusBar } from '../components/layout/StatusBar';
 import { TopBar } from '../components/layout/TopBar';
 import { WorkspaceNotice } from '../components/layout/WorkspaceNotice';
@@ -18,6 +20,7 @@ export function App() {
       data-theme={theme}
     >
       <WebMcpRuntime />
+      <PersistenceRecoveryNotice />
       <a
         href="#architecture-canvas"
         className="sr-only z-50 rounded bg-cyan-400 px-3 py-2 font-semibold text-slate-950 focus:not-sr-only focus:absolute focus:left-3 focus:top-3"
@@ -39,6 +42,7 @@ export function App() {
 
       <StatusBar />
       <ActivityDrawer />
+      <AgentSessionComparison />
       <WorkspaceNotice />
     </div>
   );

@@ -1,6 +1,7 @@
 import { createFinding } from '../analysis/finding';
 import {
   architectureEntryIds,
+  hasIndependentReplicationPeer,
   isComponentRedundant,
   isGloballyDistributed,
   reachableComponentIds,
@@ -13,8 +14,19 @@ import type {
   FailureSimulationStatus,
 } from './types';
 
-function componentSurvivesAzFailure(component: ArchitectureComponent): boolean {
-  return isComponentRedundant(component);
+function componentSurvivesAzFailure(
+  architecture: Architecture,
+  component: ArchitectureComponent,
+  failedAvailabilityZone: string,
+): boolean {
+  return (
+    isComponentRedundant(component) ||
+    hasIndependentReplicationPeer(
+      architecture,
+      component,
+      failedAvailabilityZone,
+    )
+  );
 }
 
 function simulationStatus(
@@ -62,7 +74,7 @@ export function simulateFailure(
     }
 
     for (const component of affected) {
-      if (componentSurvivesAzFailure(component)) {
+      if (componentSurvivesAzFailure(architecture, component, input.target)) {
         degraded.add(component.id);
       } else {
         failed.add(component.id);

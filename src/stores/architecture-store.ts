@@ -51,7 +51,13 @@ export type PersistedArchitectureState = {
   future: Architecture[];
 };
 
+export type RecordActivityInput = Pick<
+  ActivityEntry,
+  'actor' | 'action' | 'summary' | 'details'
+>;
+
 export type ArchitectureStore = PersistedArchitectureState & {
+  persistenceRecoveryNotice: string | null;
   createArchitecture: (
     input: CreateArchitectureInput,
     actor?: Actor,
@@ -93,6 +99,9 @@ export type ArchitectureStore = PersistedArchitectureState & {
     templateId?: ArchitectureTemplateId,
     actor?: Actor,
   ) => Architecture;
+  resetDemo: () => Architecture;
+  recordActivity: (input: RecordActivityInput) => ActivityEntry;
+  clearPersistenceRecoveryNotice: () => void;
   undo: (actor?: Actor) => boolean;
   redo: (actor?: Actor) => boolean;
 };
@@ -249,6 +258,29 @@ export function createArchitectureStore(
   const storage =
     options.storage ??
     createJSONStorage<PersistedArchitectureState>(getSafeStateStorage);
+  let persistenceReadFailed = false;
+  const recoverStorageRead = () => {
+    persistenceReadFailed = true;
+    return null;
+  };
+  const recoverableStorage:
+    PersistStorage<PersistedArchitectureState> | undefined = storage
+    ? {
+        ...storage,
+        getItem: (name) => {
+          persistenceReadFailed = false;
+          try {
+            const saved = storage.getItem(name);
+            return saved instanceof Promise
+              ? saved.catch(recoverStorageRead)
+              : saved;
+          } catch {
+            // Let hydration complete and surface recovery without overwriting the saved data.
+            return recoverStorageRead();
+          }
+        },
+      }
+    : undefined;
 
   return create<ArchitectureStore>()(
     persist<ArchitectureStore, [], [], PersistedArchitectureState>(
@@ -280,6 +312,7 @@ export function createArchitectureStore(
           activity: [],
           past: [],
           future: [],
+          persistenceRecoveryNotice: null,
 
           createArchitecture: (input, actor = 'human') => {
             const architecture = createEmptyArchitecture(input);
@@ -634,6 +667,35 @@ export function createArchitectureStore(
             );
           },
 
+          resetDemo: () => {
+            const architecture = getArchitectureTemplate(
+              DEFAULT_ARCHITECTURE_TEMPLATE_ID,
+            );
+            set({
+              architecture,
+              activity: [],
+              past: [],
+              future: [],
+            });
+            return architecture;
+          },
+
+          recordActivity: (input) => {
+            const entry = createActivity(
+              input.actor,
+              input.action,
+              input.summary,
+              input.details,
+            );
+            set((state) => ({
+              activity: [...state.activity, entry].slice(-ACTIVITY_LIMIT),
+            }));
+            return entry;
+          },
+
+          clearPersistenceRecoveryNotice: () =>
+            set({ persistenceRecoveryNotice: null }),
+
           undo: (actor = 'human') => {
             const state = get();
             const previous = state.past.at(-1);
@@ -686,7 +748,7 @@ export function createArchitectureStore(
       {
         name: options.storageKey ?? ARCHITECTURE_STORAGE_KEY,
         version: PERSISTENCE_VERSION,
-        storage,
+        storage: recoverableStorage,
         skipHydration: options.skipHydration,
         partialize: (state) => ({
           architecture: state.architecture,
@@ -696,7 +758,16 @@ export function createArchitectureStore(
         }),
         merge: (persistedState, currentState) => {
           const persisted = parsedPersistedState(persistedState);
-          return persisted ? { ...currentState, ...persisted } : currentState;
+          if (persisted) {
+            return { ...currentState, ...persisted };
+          }
+          return persistedState || persistenceReadFailed
+            ? {
+                ...currentState,
+                persistenceRecoveryNotice:
+                  'Saved workspace data was invalid. The canonical Ecommerce demo was restored safely.',
+              }
+            : currentState;
         },
       },
     ),

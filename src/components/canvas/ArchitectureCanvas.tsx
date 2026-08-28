@@ -12,7 +12,14 @@ import {
   type NodeMouseHandler,
   type OnNodeDrag,
 } from '@xyflow/react';
-import { Boxes, Grid3X3, MousePointer2 } from 'lucide-react';
+import {
+  Boxes,
+  CircleX,
+  Grid3X3,
+  MousePointer2,
+  ShieldCheck,
+  TriangleAlert,
+} from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -39,7 +46,10 @@ const nodeTypes = { 'architecture-component': ArchitectureNode };
 const edgeTypes = { 'architecture-connection': ArchitectureEdge };
 const deleteKeys = ['Backspace', 'Delete'];
 const snapGrid: [number, number] = [16, 16];
-const initialFitViewOptions = { padding: 0.28, maxZoom: 1 };
+const initialFitViewOptions = {
+  padding: { top: '88px', right: '32px', bottom: '104px', left: '32px' },
+  maxZoom: 1,
+} as const;
 const defaultEdgeOptions = { type: 'architecture-connection' as const };
 
 const connectionColors: Record<
@@ -137,11 +147,25 @@ function ArchitectureCanvasInner() {
     }
   }, [projectedNodes, setFlowNodes]);
 
+  useEffect(() => {
+    if (architecture.revision !== 0) return;
+    const frame = window.requestAnimationFrame(() => {
+      void fitView(initialFitViewOptions);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [architecture, fitView]);
+
   const edges = useMemo<ArchitectureFlowEdge[]>(
     () =>
       architecture.connections.map((connection) => {
         const impacted =
           simulation?.impactedEdgeIds.includes(connection.id) ?? false;
+        const failed =
+          simulation?.failedComponentIds.includes(connection.source) ||
+          simulation?.failedComponentIds.includes(connection.target);
+        const degraded =
+          simulation?.degradedComponentIds.includes(connection.source) ||
+          simulation?.degradedComponentIds.includes(connection.target);
         return {
           id: connection.id,
           type: 'architecture-connection',
@@ -149,13 +173,21 @@ function ArchitectureCanvasInner() {
           target: connection.target,
           selected: connection.id === selectedConnectionId,
           animated: connection.type === 'async' && !impacted,
-          data: { connection, impacted },
+          data: {
+            connection,
+            impacted,
+            impactState: failed ? 'failed' : degraded ? 'degraded' : 'normal',
+          },
           markerEnd: {
             type: MarkerType.ArrowClosed,
             color: impacted
-              ? theme === 'dark'
-                ? '#fb7185'
-                : '#e11d48'
+              ? failed
+                ? theme === 'dark'
+                  ? '#fb7185'
+                  : '#e11d48'
+                : theme === 'dark'
+                  ? '#fbbf24'
+                  : '#b45309'
               : connectionColors[theme][connection.type],
             width: 14,
             height: 14,
@@ -289,27 +321,30 @@ function ArchitectureCanvasInner() {
         />
         <h1
           id="canvas-title"
-          className="text-[11px] font-medium text-slate-300"
+          className="shrink-0 whitespace-nowrap text-[13px] font-medium text-slate-300"
         >
           Architecture Canvas
         </h1>
         <span className="mx-2 text-slate-700" aria-hidden="true">
           /
         </span>
-        <span className="truncate text-[10px] text-slate-600">
+        <span
+          className="min-w-0 truncate text-[12px] text-slate-600"
+          title={architecture.name}
+        >
           {architecture.name}
         </span>
-        <span className="ml-auto font-mono text-[9px] text-slate-600">
+        <span className="ml-auto shrink-0 whitespace-nowrap pl-3 font-mono text-[11px] text-slate-600">
           {architecture.components.length} nodes ·{' '}
           {architecture.connections.length} edges · rev {architecture.revision}
         </span>
         {simulation ? (
           <span
-            className="ml-3 border border-amber-400/30 bg-amber-400/10 px-2 py-1 text-[8px] font-semibold uppercase tracking-[0.1em] text-amber-300"
+            className="ml-3 shrink-0 whitespace-nowrap border border-amber-400/30 bg-amber-400/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-amber-300"
             data-testid="simulation-edge-count"
           >
-            Simulation active · {simulation.impactedEdgeIds.length} impacted
-            edges
+            <span className="max-[1450px]:sr-only">Simulation active · </span>
+            {simulation.impactedEdgeIds.length} impacted edges
           </span>
         ) : null}
       </div>
@@ -319,6 +354,49 @@ function ArchitectureCanvasInner() {
         onDrop={handleDrop}
         onDragOver={(event) => event.preventDefault()}
       >
+        {simulation ? (
+          <div
+            className={`pointer-events-none absolute left-1/2 top-3 z-20 flex min-w-80 -translate-x-1/2 items-center gap-3 border px-4 py-2.5 shadow-xl backdrop-blur-sm ${
+              simulation.status === 'unavailable'
+                ? 'border-rose-400/50 bg-rose-950/95'
+                : simulation.status === 'degraded'
+                  ? 'border-amber-400/45 bg-amber-950/90'
+                  : 'border-emerald-400/35 bg-emerald-950/95'
+            }`}
+            role="status"
+            aria-live="polite"
+          >
+            {simulation.status === 'unavailable' ? (
+              <CircleX
+                className="size-5 shrink-0 text-rose-300"
+                aria-hidden="true"
+              />
+            ) : simulation.status === 'degraded' ? (
+              <TriangleAlert
+                className="size-5 shrink-0 text-amber-300"
+                aria-hidden="true"
+              />
+            ) : (
+              <ShieldCheck
+                className="size-5 shrink-0 text-emerald-300"
+                aria-hidden="true"
+              />
+            )}
+            <div>
+              <p className="text-base font-bold text-slate-100">
+                {simulation.status === 'unavailable'
+                  ? 'System is unavailable'
+                  : `System remains ${simulation.status}`}
+              </p>
+              <p className="mt-0.5 text-[11px] text-slate-400">
+                {simulation.target} failure ·{' '}
+                {simulation.failedComponentIds.length} failed ·{' '}
+                {simulation.degradedComponentIds.length} degraded
+              </p>
+            </div>
+          </div>
+        ) : null}
+
         <ReactFlow<ArchitectureFlowNode, ArchitectureFlowEdge>
           defaultNodes={initialNodes}
           edges={edges}
@@ -355,9 +433,11 @@ function ArchitectureCanvasInner() {
           <Controls
             position="bottom-left"
             showInteractive={false}
+            fitViewOptions={initialFitViewOptions}
             aria-label="Canvas zoom and fit controls"
           />
           <MiniMap
+            style={{ width: 128, height: 88 }}
             position="bottom-right"
             pannable
             zoomable
@@ -384,7 +464,7 @@ function ArchitectureCanvasInner() {
                 <p className="mt-3 text-xs font-medium text-slate-300">
                   Blank architecture
                 </p>
-                <p className="mt-1 text-[10px] text-slate-600">
+                <p className="mt-1 text-[12px] text-slate-600">
                   Click a catalog component or drag it onto the canvas.
                 </p>
               </div>
@@ -392,7 +472,7 @@ function ArchitectureCanvasInner() {
           ) : null}
         </ReactFlow>
 
-        <div className="pointer-events-none absolute bottom-3 left-12 z-10 flex h-7 items-center gap-2 border border-slate-800/80 bg-[#0b0f15]/90 px-2 text-[9px] text-slate-600">
+        <div className="pointer-events-none absolute bottom-3 left-12 z-10 flex h-7 items-center gap-2 border border-slate-800/80 bg-[#0b0f15]/90 px-2 text-[11px] text-slate-600">
           <Grid3X3 className="size-3" aria-hidden="true" />
           Snap 16 px
         </div>

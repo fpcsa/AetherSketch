@@ -1,6 +1,10 @@
 import type { Architecture, ArchitectureComponent } from '../model';
 import { createFinding } from './finding';
-import { isComponentRedundant, isProvisionedCompute } from './graph';
+import {
+  hasIndependentReplicationPeer,
+  isComponentRedundantInArchitecture,
+  isProvisionedCompute,
+} from './graph';
 import type {
   ArchitectureFinding,
   ScoreAdjustment,
@@ -58,10 +62,14 @@ export function analyzeResilience(architecture: Architecture): ScoreAnalysis {
       continue;
     }
 
-    if (
-      !database.configuration.multiAZ ||
-      database.availabilityZones.length < 2
-    ) {
+    const hasNativeMultiAz =
+      database.configuration.multiAZ && database.availabilityZones.length >= 2;
+    const hasReplicationPeer = hasIndependentReplicationPeer(
+      architecture,
+      database,
+    );
+
+    if (!hasNativeMultiAz && !hasReplicationPeer) {
       applyRule({
         code: 'CRITICAL_DATABASE_SINGLE_AZ',
         delta: -12,
@@ -77,7 +85,7 @@ export function analyzeResilience(architecture: Architecture): ScoreAnalysis {
           scoreDelta: -12,
         },
       });
-    } else {
+    } else if (hasNativeMultiAz) {
       applyRule({
         code: 'CRITICAL_DATABASE_MULTI_AZ',
         delta: 4,
@@ -89,6 +97,22 @@ export function analyzeResilience(architecture: Architecture): ScoreAnalysis {
         evidence: {
           availabilityZones: database.availabilityZones,
           multiAZ: database.configuration.multiAZ,
+          scoreDelta: 4,
+        },
+      });
+    } else {
+      applyRule({
+        code: 'CRITICAL_DATABASE_REPLICATED',
+        delta: 4,
+        component: database,
+        severity: 'info',
+        title: 'Critical database has an independent replica',
+        message: `${database.name} has a modeled replication peer in another availability zone.`,
+        remediation:
+          'Maintain replication monitoring and test promotion procedures.',
+        evidence: {
+          availabilityZones: database.availabilityZones,
+          replicationPeer: true,
           scoreDelta: 4,
         },
       });
@@ -227,7 +251,7 @@ export function analyzeResilience(architecture: Architecture): ScoreAnalysis {
     (component) => component.critical,
   );
   const nonRedundantCritical = criticalComponents.filter(
-    (component) => !isComponentRedundant(component),
+    (component) => !isComponentRedundantInArchitecture(architecture, component),
   );
 
   if (nonRedundantCritical.length > 0) {

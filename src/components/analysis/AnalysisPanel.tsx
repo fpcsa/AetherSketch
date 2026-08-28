@@ -74,7 +74,7 @@ export function AnalysisPanel() {
         <button
           type="button"
           onClick={() => runAnalysis()}
-          className="flex h-7 items-center gap-1.5 border border-cyan-400/30 bg-cyan-400/8 px-2.5 text-[9px] font-semibold text-cyan-200 transition-colors hover:bg-cyan-400/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80"
+          className="flex h-7 items-center gap-1.5 border border-cyan-400/30 bg-cyan-400/8 px-2.5 text-[11px] font-semibold text-cyan-200 transition-colors hover:bg-cyan-400/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80"
         >
           {analysisStale ? (
             <RotateCw className="size-3" aria-hidden="true" />
@@ -94,7 +94,7 @@ export function AnalysisPanel() {
             <Eraser className="size-3" aria-hidden="true" />
           </button>
         ) : null}
-        <span className="ml-auto text-[8px] uppercase tracking-[0.1em] text-slate-600">
+        <span className="ml-auto text-[10px] uppercase tracking-[0.1em] text-slate-600">
           {analysisStale
             ? 'Results stale'
             : analysis
@@ -107,7 +107,7 @@ export function AnalysisPanel() {
         {analysis ? (
           <>
             {analysisStale ? (
-              <div className="mb-3 flex items-start gap-2 border border-amber-400/25 bg-amber-400/5 p-2.5 text-[9px] leading-4 text-amber-200/80">
+              <div className="mb-3 flex items-start gap-2 border border-amber-400/25 bg-amber-400/5 p-2.5 text-[11px] leading-4 text-amber-200/80">
                 <AlertTriangle
                   className="mt-0.5 size-3 shrink-0"
                   aria-hidden="true"
@@ -123,11 +123,11 @@ export function AnalysisPanel() {
                   <section key={group.severity}>
                     <div className="mb-1.5 flex items-center gap-2">
                       <span
-                        className={`border px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.1em] ${severityClasses[group.severity]}`}
+                        className={`border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] ${severityClasses[group.severity]}`}
                       >
                         {group.severity}
                       </span>
-                      <span className="text-[8px] text-slate-700">
+                      <span className="text-[10px] text-slate-700">
                         {group.findings.length}
                       </span>
                     </div>
@@ -156,7 +156,7 @@ export function AnalysisPanel() {
                 ))}
               </div>
             ) : (
-              <p className="border border-emerald-400/20 bg-emerald-400/5 p-3 text-[10px] text-emerald-300/80">
+              <p className="border border-emerald-400/20 bg-emerald-400/5 p-3 text-[12px] text-emerald-300/80">
                 No findings for this analysis focus.
               </p>
             )}
@@ -168,10 +168,10 @@ export function AnalysisPanel() {
                 className="mx-auto size-5 text-slate-700"
                 aria-hidden="true"
               />
-              <p className="mt-3 text-[10px] font-medium text-slate-400">
+              <p className="mt-3 text-[12px] font-medium text-slate-400">
                 No analysis results
               </p>
-              <p className="mt-1 text-[9px] leading-4 text-slate-700">
+              <p className="mt-1 text-[11px] leading-4 text-slate-700">
                 Run deterministic analysis to inspect cost, resilience,
                 security, and structural findings.
               </p>
@@ -196,12 +196,12 @@ function Metric({
 }) {
   return (
     <div className="border-r border-slate-800/80 px-2 py-2.5 last:border-r-0">
-      <p className="truncate text-[7px] font-semibold uppercase tracking-[0.09em] text-slate-600">
+      <p className="min-h-8 text-[10px] font-semibold uppercase tracking-[0.09em] text-slate-600">
         {label}
       </p>
       <p className="mt-1 text-[13px] font-semibold tabular-nums text-slate-200">
         {value}{' '}
-        <span className="text-[8px] font-normal text-slate-700">{detail}</span>
+        <span className="text-[10px] font-normal text-slate-700">{detail}</span>
       </p>
       {progress === undefined ? (
         <div className="mt-1.5 h-0.5 bg-slate-800" aria-hidden="true" />
@@ -247,21 +247,21 @@ function FindingItem({
             : finding.remediation
         }
       >
-        <div className="flex items-center gap-2">
-          <span className="text-[8px] font-semibold uppercase tracking-[0.09em] text-slate-600">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.09em] text-slate-600">
             {finding.category}
           </span>
-          <span className="ml-auto font-mono text-[7px] text-slate-700">
+          <span className="min-w-0 break-all font-mono text-[10px] text-slate-700">
             {finding.code}
           </span>
         </div>
-        <p className="mt-1 text-[10px] font-medium leading-4 text-slate-300">
+        <p className="mt-1 text-[12px] font-medium leading-4 text-slate-300">
           {finding.title}
         </p>
         {componentName ? (
-          <p className="mt-0.5 text-[9px] text-cyan-400/80">{componentName}</p>
+          <p className="mt-0.5 text-[11px] text-cyan-400/80">{componentName}</p>
         ) : null}
-        <p className="mt-1 line-clamp-2 text-[9px] leading-4 text-slate-600">
+        <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-600">
           {finding.message}
         </p>
       </button>

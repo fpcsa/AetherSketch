@@ -1,6 +1,8 @@
 import { createJSONStorage, type StateStorage } from 'zustand/middleware';
 import { describe, expect, it, vi } from 'vitest';
 
+import { analyzeArchitecture } from '../../src/architecture/analysis';
+import { simulateFailure } from '../../src/architecture/simulation';
 import {
   createArchitectureStore,
   type PersistedArchitectureState,
@@ -98,6 +100,54 @@ async function execute<T>(
 }
 
 describe('WebMCP mutation tools', () => {
+  it('places demo additions in a compact grid without overlapping existing cards', async () => {
+    const { tools, architectureStore } = createHarness();
+    for (const kind of ['waf', 'queue', 'secrets-manager', 'sql-database']) {
+      expect(
+        await execute(toolNamed(tools, 'add_component'), { kind }),
+      ).toMatchObject({ ok: true });
+    }
+    const components = architectureStore.getState().architecture.components;
+    expect(components).toHaveLength(9);
+    expect(Math.max(...components.map((item) => item.position.x))).toBe(656);
+    for (let i = 0; i < components.length; i += 1) {
+      for (let j = i + 1; j < components.length; j += 1) {
+        const a = components[i].position;
+        const b = components[j].position;
+        expect(Math.abs(a.x - b.x) >= 248 || Math.abs(a.y - b.y) >= 160).toBe(
+          true,
+        );
+      }
+    }
+  });
+
+  it.each([undefined, {}])(
+    'preserves edit authority and locks without a signal: %j',
+    async (options) => {
+      const { tools, architectureStore, setEditMode } = createHarness();
+      const update = toolNamed(tools, 'update_component');
+      const invoke = (componentId: string) =>
+        update.execute(
+          { componentId, changes: { replicas: 2 } },
+          options as WebMCP.ToolExecuteCallbackOptions,
+        );
+      expect(await invoke('ecommerce-ecs')).toMatchObject({ ok: true });
+      architectureStore.getState().lockComponent('ecommerce-postgresql');
+      const before = architectureStore.getState().architecture;
+      expect(await invoke('ecommerce-postgresql')).toMatchObject({
+        ok: false,
+        error: { code: 'COMPONENT_LOCKED' },
+      });
+      expect(architectureStore.getState().architecture).toBe(before);
+      setEditMode(false);
+      expect(await invoke('ecommerce-ecs')).toMatchObject({
+        ok: false,
+        error: { code: 'EDIT_MODE_DISABLED' },
+      });
+      expect(architectureStore.getState().architecture).toBe(before);
+    },
+  );
+
   it('exposes exactly five strict, explicitly mutating tools', () => {
     const { tools } = createHarness();
 
@@ -373,6 +423,152 @@ describe('WebMCP mutation tools', () => {
       data: {
         constraintPolicy: 'soft-goals-evaluated-after-mutation',
       },
+    });
+  });
+
+  it('completes the canonical locked-PostgreSQL improvement workflow', async () => {
+    const { architectureStore, tools } = createHarness();
+    architectureStore.getState().setConstraints(
+      {
+        maximumMonthlyCost: 3000,
+        targetResilienceScore: 90,
+        targetSecurityScore: 90,
+        requiredRegion: 'eu-west-1',
+        requireEncryptionAtRest: true,
+      },
+      'human',
+    );
+    architectureStore.getState().lockComponent('ecommerce-postgresql', 'human');
+
+    const update = toolNamed(tools, 'update_component');
+    const add = toolNamed(tools, 'add_component');
+    const connect = toolNamed(tools, 'connect_components');
+    const disconnect = toolNamed(tools, 'disconnect_components');
+
+    expect(
+      await execute(update, {
+        componentId: 'ecommerce-ecs',
+        changes: {
+          replicas: 2,
+          availabilityZones: ['eu-west-1a', 'eu-west-1b'],
+          configuration: { autoscaling: true },
+        },
+      }),
+    ).toMatchObject({ ok: true });
+
+    for (const input of [
+      {
+        kind: 'waf',
+        name: 'Storefront WAF',
+        critical: true,
+      },
+      {
+        kind: 'queue',
+        name: 'Order Buffer',
+        configuration: { deadLetterQueue: true, encrypted: true },
+      },
+      {
+        kind: 'secrets-manager',
+        name: 'Application Secrets',
+        configuration: { automaticRotation: true },
+      },
+      {
+        kind: 'sql-database',
+        name: 'Orders Failover Replica',
+        availabilityZones: ['eu-west-1b'],
+        configuration: {
+          engine: 'postgresql',
+          multiAZ: false,
+          encrypted: true,
+          backupsEnabled: true,
+          publicAccess: false,
+        },
+      },
+    ]) {
+      expect(await execute(add, input)).toMatchObject({ ok: true });
+    }
+
+    const byName = (name: string) =>
+      architectureStore
+        .getState()
+        .architecture.components.find((component) => component.name === name)!
+        .id;
+    const wafId = byName('Storefront WAF');
+    const queueId = byName('Order Buffer');
+    const secretsId = byName('Application Secrets');
+    const replicaId = byName('Orders Failover Replica');
+
+    expect(
+      await execute(disconnect, { connectionId: 'ecommerce-edge-2' }),
+    ).toMatchObject({ ok: true });
+    for (const input of [
+      {
+        sourceComponentId: 'ecommerce-cloudfront',
+        targetComponentId: wafId,
+        type: 'request',
+        protocol: 'HTTPS',
+        encrypted: true,
+      },
+      {
+        sourceComponentId: wafId,
+        targetComponentId: 'ecommerce-alb',
+        type: 'request',
+        protocol: 'HTTPS',
+        encrypted: true,
+      },
+      {
+        sourceComponentId: 'ecommerce-ecs',
+        targetComponentId: queueId,
+        type: 'async',
+        protocol: 'HTTPS',
+        encrypted: true,
+      },
+      {
+        sourceComponentId: secretsId,
+        targetComponentId: 'ecommerce-ecs',
+        type: 'management',
+        protocol: 'HTTPS',
+        encrypted: true,
+      },
+      {
+        sourceComponentId: 'ecommerce-postgresql',
+        targetComponentId: replicaId,
+        type: 'replication',
+        protocol: 'PostgreSQL/TLS',
+        encrypted: true,
+      },
+    ]) {
+      expect(await execute(connect, input)).toMatchObject({ ok: true });
+    }
+
+    const architecture = architectureStore.getState().architecture;
+    const primaryDatabase = architecture.components.find(
+      (component) => component.id === 'ecommerce-postgresql',
+    );
+    const analysis = analyzeArchitecture(architecture);
+    const simulation = simulateFailure(architecture, {
+      scope: 'availability-zone',
+      target: 'eu-west-1a',
+    });
+
+    expect(primaryDatabase).toMatchObject({
+      locked: true,
+      availabilityZones: ['eu-west-1a'],
+      configuration: { multiAZ: false },
+    });
+    expect(analysis).toMatchObject({
+      estimatedMonthlyCost: 1288,
+      resilienceScore: 100,
+      securityScore: 90,
+      constraints: {
+        withinBudget: true,
+        allApplicableConstraintsMet: true,
+      },
+    });
+    expect(simulation).toMatchObject({
+      status: 'degraded',
+      criticalPathsRemaining: true,
+      failedComponentIds: [],
     });
   });
 });

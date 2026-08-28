@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -71,6 +72,77 @@ describe('human architecture workspace', () => {
       connections: [],
     });
     expect(screen.getByText('Blank architecture')).toBeInTheDocument();
+  });
+
+  it('offers copyable demo prompts without embedding an assistant', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Demo prompts' }));
+    const prompts = screen.getByRole('region', {
+      name: 'Suggested demo prompts',
+    });
+    expect(prompts).toHaveTextContent(
+      'Analyze this architecture for production readiness. Do not modify anything.',
+    );
+    expect(prompts).toHaveTextContent(
+      'Improve the architecture to survive an availability-zone failure while staying under my budget. Keep PostgreSQL.',
+    );
+    expect(prompts).toHaveTextContent('Simulate the loss of eu-west-1a.');
+    expect(
+      within(prompts).getAllByRole('button', { name: /Copy demo prompt/ }),
+    ).toHaveLength(3);
+    expect(screen.queryByRole('textbox', { name: /chat/i })).toBeNull();
+  });
+
+  it('surfaces corrupted-persistence recovery without blocking the workspace', async () => {
+    useArchitectureStore.setState({
+      persistenceRecoveryNotice:
+        'Saved workspace data was invalid. The canonical Ecommerce demo was restored safely.',
+    });
+
+    render(<App />);
+
+    const recoveryMessage = await screen.findByText(
+      /canonical Ecommerce demo was restored safely/i,
+    );
+    expect(recoveryMessage).toBeVisible();
+    expect(recoveryMessage.closest('[role="alert"]')).not.toBeNull();
+    expect(
+      screen.getByRole('heading', { name: 'Architecture Canvas' }),
+    ).toBeVisible();
+    expect(
+      useArchitectureStore.getState().persistenceRecoveryNotice,
+    ).toBeNull();
+  });
+
+  it('copies the exact three canonical prompts to the clipboard', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    try {
+      render(<App />);
+      fireEvent.click(screen.getByRole('button', { name: 'Demo prompts' }));
+      const prompts = [
+        'Analyze this architecture for production readiness. Do not modify anything.',
+        'Improve the architecture to survive an availability-zone failure while staying under my budget. Keep PostgreSQL.',
+        'Simulate the loss of eu-west-1a.',
+      ];
+      for (const [index, prompt] of prompts.entries()) {
+        fireEvent.click(
+          screen.getByRole('button', { name: `Copy demo prompt ${index + 1}` }),
+        );
+        await waitFor(() =>
+          expect(writeText).toHaveBeenNthCalledWith(index + 1, prompt),
+        );
+      }
+      expect(screen.getByText('Demo prompt copied.')).toBeVisible();
+    } finally {
+      if (descriptor) Object.defineProperty(navigator, 'clipboard', descriptor);
+      else Reflect.deleteProperty(navigator, 'clipboard');
+    }
   });
 
   it('adds, removes, undoes, and redoes a catalog component', () => {
@@ -407,12 +479,42 @@ describe('human architecture workspace', () => {
     expect(screen.getByTestId('simulation-edge-count')).toHaveTextContent(
       '3 impacted edges',
     );
+    expect(screen.getAllByText('System is unavailable')).toHaveLength(2);
+    expect(screen.getAllByText('Failed').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Degraded').length).toBeGreaterThan(0);
     expect(JSON.stringify(useArchitectureStore.getState().architecture)).toBe(
       architectureBefore,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear simulation' }));
     expect(useIntelligenceStore.getState().simulation).toBeNull();
+  });
+
+  it('synchronizes manual controls with agent simulations, including repeated targets', async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Simulate' }));
+    const simulate = () =>
+      useIntelligenceStore
+        .getState()
+        .runSimulation({ scope: 'availability-zone', target: 'eu-west-1a' });
+    await act(simulate);
+    expect(
+      screen.getByRole('button', { name: 'Availability zone' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('Failure target')).toHaveValue('eu-west-1a');
+    fireEvent.click(screen.getByRole('button', { name: 'Region' }));
+    await act(simulate);
+    expect(
+      screen.getByRole('button', { name: 'Availability zone' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('Failure target')).toHaveValue('eu-west-1a');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Run failure simulation' }),
+    );
+    expect(useIntelligenceStore.getState().simulation).toMatchObject({
+      scope: 'availability-zone',
+      target: 'eu-west-1a',
+    });
   });
 
   it('exports validated JSON and imports valid projects without corrupting on failure', async () => {
@@ -476,7 +578,8 @@ describe('human architecture workspace', () => {
     useArchitectureStore.getState().renameArchitecture('Observed Platform');
     render(<App />);
 
-    expect(screen.getAllByText('Unavailable')).toHaveLength(2);
+    expect(screen.getByText('WebMCP unavailable')).toBeVisible();
+    expect(screen.getByText('Manual editing still works')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Activity history' }));
     expect(
       screen.getByRole('heading', { name: 'Activity & history' }),
@@ -502,16 +605,17 @@ describe('human architecture workspace', () => {
     });
     render(<App />);
 
-    expect(screen.getAllByText('Initializing')).toHaveLength(2);
+    expect(screen.getByText('Initializing')).toBeVisible();
+    expect(screen.getByText('WebMCP Initializing')).toBeVisible();
     expect(registrationResolvers).toHaveLength(4);
 
     await act(async () => {
       registrationResolvers.forEach((resolve) => resolve());
       await Promise.resolve();
     });
-    await waitFor(() => expect(screen.getAllByText('Ready')).toHaveLength(2));
-    expect(screen.getByText('4 read tools')).toBeVisible();
-    expect(screen.getByText('4 read / 0 edit')).toBeVisible();
+    await waitFor(() => expect(screen.getByText('Ready')).toBeVisible());
+    expect(screen.getAllByText('Review')).toHaveLength(2);
+    expect(screen.getAllByText('4 tools')).toHaveLength(2);
   });
 
   it('dynamically grants and revokes exactly five agent mutation tools', async () => {
@@ -549,8 +653,8 @@ describe('human architecture workspace', () => {
       'analyze_architecture',
       'simulate_failure',
     ]);
-    expect(screen.getAllByText('Review Mode')).toHaveLength(2);
-    expect(screen.getByText('0 edit tools')).toBeVisible();
+    expect(screen.getAllByText('Review')).toHaveLength(2);
+    expect(screen.getAllByText('4 tools')).toHaveLength(2);
 
     fireEvent.click(
       screen.getByRole('button', { name: 'Enable Agent Editing' }),
@@ -562,8 +666,11 @@ describe('human architecture workspace', () => {
       editRegistrationStatus: 'ready',
     });
     expect(useWebMcpStore.getState().editTools).toHaveLength(5);
-    expect(screen.getAllByText('Agent Editing Enabled')).toHaveLength(2);
-    expect(screen.getByText('5 edit tools')).toBeVisible();
+    expect(screen.getAllByText('Agent Edit')).toHaveLength(2);
+    expect(screen.getAllByText('9 tools')).toHaveLength(2);
+    expect(useWebMcpStore.getState().agentSessionBaseline).toEqual(
+      getArchitectureTemplate('ecommerce-production'),
+    );
 
     await act(async () => {
       await registeredTools
@@ -588,6 +695,40 @@ describe('human architecture workspace', () => {
     });
     expect(useIntelligenceStore.getState().analysisStale).toBe(true);
 
+    fireEvent.click(
+      screen.getByRole('button', { name: 'View agent session comparison' }),
+    );
+    const comparison = screen.getByRole('complementary', {
+      name: 'Agent session comparison',
+    });
+    expect(
+      within(comparison).getByTestId('agent-session-score-deltas'),
+    ).toHaveTextContent(/Cost\s*Before → After\s*\$675\s*\$687\s*\+\$12/);
+    expect(
+      within(comparison).getByText('Agent Fulfillment Queue'),
+    ).toBeVisible();
+    expect(within(comparison).getByText('Added')).toBeVisible();
+    fireEvent.click(
+      within(comparison).getByRole('button', {
+        name: /Agent Fulfillment Queue/,
+      }),
+    );
+    expect(useWorkspaceUiStore.getState()).toMatchObject({
+      activePanel: 'inspector',
+      selectedComponentId: added!.id,
+    });
+    expect(
+      screen.queryByRole('complementary', { name: 'Agent session comparison' }),
+    ).toBeNull();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'View agent session comparison' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Close agent session comparison',
+      }),
+    );
+
     useArchitectureStore
       .getState()
       .lockComponent('ecommerce-postgresql', 'human');
@@ -607,6 +748,19 @@ describe('human architecture workspace', () => {
         componentId: 'ecommerce-postgresql',
       },
     });
+    expect(useArchitectureStore.getState().activity.at(-1)).toMatchObject({
+      actor: 'agent',
+      action: 'webmcp.action.blocked',
+      summary: 'Attempted to modify locked Orders Database — blocked',
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Activity history' }));
+    expect(
+      screen.getByText('Attempted to modify locked Orders Database — blocked'),
+    ).toBeVisible();
+    expect(screen.getByText('Blocked')).toBeVisible();
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Close activity history' }).at(-1)!,
+    );
 
     const staleAddTool = registeredTools.get('add_component')!;
     const readSignals = toolSignals.get('get_architecture')!;
@@ -654,6 +808,96 @@ describe('human architecture workspace', () => {
     ]);
   });
 
+  it('resets every transient demo surface to the canonical Ecommerce state', async () => {
+    const registeredTools = new Map<string, WebMCP.ModelContextTool>();
+    Object.defineProperty(document, 'modelContext', {
+      configurable: true,
+      value: {
+        registerTool: vi.fn(
+          (
+            tool: WebMCP.ModelContextTool,
+            options?: WebMCP.ModelContextRegisterToolOptions,
+          ) => {
+            registeredTools.set(tool.name, tool);
+            options?.signal?.addEventListener('abort', () => {
+              if (registeredTools.get(tool.name) === tool) {
+                registeredTools.delete(tool.name);
+              }
+            });
+            return Promise.resolve();
+          },
+        ),
+      },
+    });
+    render(<App />);
+    await waitFor(() => expect(registeredTools.size).toBe(4));
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Enable Agent Editing' }),
+    );
+    await waitFor(() => expect(registeredTools.size).toBe(9));
+    await act(async () => {
+      await registeredTools
+        .get('add_component')!
+        .execute(
+          { kind: 'queue', name: 'Temporary Demo Queue' },
+          { signal: new AbortController().signal },
+        );
+    });
+    act(() => {
+      useIntelligenceStore.getState().runSimulation({
+        scope: 'availability-zone',
+        target: 'eu-west-1a',
+      });
+      useWorkspaceUiStore.getState().selectComponent('ecommerce-postgresql');
+      useWebMcpStore.getState().setComparisonOpen(true);
+    });
+    expect(useArchitectureStore.getState().past.length).toBeGreaterThan(0);
+    expect(useArchitectureStore.getState().activity.length).toBeGreaterThan(0);
+    expect(useIntelligenceStore.getState().simulation).not.toBeNull();
+    expect(useWebMcpStore.getState().agentSessionBaseline).not.toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reset Demo' }));
+
+    await waitFor(() => expect(registeredTools.size).toBe(4));
+    expect(useArchitectureStore.getState()).toMatchObject({
+      architecture: {
+        id: 'architecture-ecommerce-production',
+        revision: 0,
+        name: 'Ecommerce Production',
+      },
+      activity: [],
+      past: [],
+      future: [],
+    });
+    expect(
+      useArchitectureStore.getState().architecture.components,
+    ).toHaveLength(5);
+    expect(useIntelligenceStore.getState()).toMatchObject({
+      simulation: null,
+      analysisStale: false,
+      analysis: {
+        estimatedMonthlyCost: 675,
+        resilienceScore: 57,
+        securityScore: 76,
+      },
+    });
+    expect(useWebMcpStore.getState()).toMatchObject({
+      mode: 'review',
+      editTools: [],
+      agentSessionBaseline: null,
+      comparisonOpen: false,
+    });
+    expect(useWorkspaceUiStore.getState().selectedComponentId).toBeNull();
+    expect(useWorkspaceUiStore.getState().activePanel).toBe('inspector');
+    expect(screen.queryByText('Temporary Demo Queue')).toBeNull();
+    expect(
+      screen.getByText(
+        'Canonical Ecommerce demo restored and session state cleared.',
+      ),
+    ).toBeVisible();
+  });
+
   it('registers live tools whose analysis and simulation update the same page', async () => {
     const registeredTools = new Map<string, WebMCP.ModelContextTool>();
     const registrationSignals: AbortSignal[] = [];
@@ -686,7 +930,7 @@ describe('human architecture workspace', () => {
       </StrictMode>,
     );
 
-    await waitFor(() => expect(screen.getAllByText('Ready')).toHaveLength(2));
+    await waitFor(() => expect(screen.getByText('Ready')).toBeVisible());
     expect([...registeredTools.keys()]).toEqual([
       'get_architecture',
       'inspect_component',
@@ -709,6 +953,11 @@ describe('human architecture workspace', () => {
       'page',
     );
     expect(screen.getByText('Public web path has no WAF')).toBeVisible();
+    expect(useArchitectureStore.getState().activity.at(-1)).toMatchObject({
+      actor: 'agent',
+      action: 'webmcp.analysis.completed',
+      summary: 'Analyzed security',
+    });
 
     await act(async () => {
       await registeredTools
@@ -730,6 +979,11 @@ describe('human architecture workspace', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByTestId('simulation-edge-count')).toBeVisible();
+    expect(useArchitectureStore.getState().activity.at(-1)).toMatchObject({
+      actor: 'agent',
+      action: 'webmcp.simulation.completed',
+      summary: 'Simulated ecommerce-postgresql failure — system unavailable',
+    });
     expect(
       serializeArchitecture(useArchitectureStore.getState().architecture),
     ).toBe(architectureBefore);

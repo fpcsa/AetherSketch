@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+import { cloneArchitecture, type Architecture } from '../architecture/model';
+
 export type WebMcpLifecycleStatus =
   'unavailable' | 'initializing' | 'ready' | 'error';
 export type AgentAuthorityMode = 'review' | 'edit';
@@ -27,6 +29,8 @@ type WebMcpState = {
   registeredTools: string[];
   registrationError: string | null;
   editRegistrationError: string | null;
+  agentSessionBaseline: Architecture | null;
+  comparisonOpen: boolean;
   lastInvocation: InvocationRecord | null;
   lastResult: OutcomeRecord | null;
   lastError: OutcomeRecord | null;
@@ -34,8 +38,10 @@ type WebMcpState = {
   markInitializing: () => void;
   markReadReady: (toolNames: readonly string[]) => void;
   markRegistrationError: (message: string) => void;
-  enableAgentEditing: () => void;
+  enableAgentEditing: (baseline: Architecture) => void;
   disableAgentEditing: () => void;
+  resetAgentSession: () => void;
+  setComparisonOpen: (open: boolean) => void;
   markEditInitializing: () => void;
   markEditReady: (toolNames: readonly string[]) => void;
   markEditRegistrationError: (message: string) => void;
@@ -54,6 +60,8 @@ const initialState = {
   registeredTools: [] as string[],
   registrationError: null,
   editRegistrationError: null,
+  agentSessionBaseline: null,
+  comparisonOpen: false,
   lastInvocation: null,
   lastResult: null,
   lastError: null,
@@ -76,6 +84,8 @@ export const useWebMcpStore = create<WebMcpState>((set) => ({
       registeredTools: [],
       registrationError: null,
       editRegistrationError: null,
+      agentSessionBaseline: null,
+      comparisonOpen: false,
     }),
   markReadReady: (readTools) =>
     set({
@@ -93,8 +103,10 @@ export const useWebMcpStore = create<WebMcpState>((set) => ({
       editTools: [],
       registeredTools: [],
       registrationError,
+      agentSessionBaseline: null,
+      comparisonOpen: false,
     }),
-  enableAgentEditing: () =>
+  enableAgentEditing: (baseline) =>
     set((state) =>
       state.status === 'ready'
         ? {
@@ -103,6 +115,8 @@ export const useWebMcpStore = create<WebMcpState>((set) => ({
             editTools: [],
             registeredTools: [...state.readTools],
             editRegistrationError: null,
+            agentSessionBaseline: cloneArchitecture(baseline),
+            comparisonOpen: false,
           }
         : state,
     ),
@@ -114,6 +128,20 @@ export const useWebMcpStore = create<WebMcpState>((set) => ({
       registeredTools: [...state.readTools],
       editRegistrationError: null,
     })),
+  resetAgentSession: () =>
+    set((state) => ({
+      mode: 'review',
+      editRegistrationStatus: 'disabled',
+      editTools: [],
+      registeredTools: [...state.readTools],
+      editRegistrationError: null,
+      agentSessionBaseline: null,
+      comparisonOpen: false,
+      lastInvocation: null,
+      lastResult: null,
+      lastError: null,
+    })),
+  setComparisonOpen: (comparisonOpen) => set({ comparisonOpen }),
   markEditInitializing: () =>
     set((state) => ({
       editRegistrationStatus: 'initializing',
