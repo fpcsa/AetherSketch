@@ -1,3 +1,5 @@
+import { analyzeNetwork, attachmentOnlyKinds } from './network';
+import { withEffectiveZones } from '../network/structure';
 import type { Architecture, ArchitectureComponent } from '../model';
 import { createFinding } from './finding';
 import {
@@ -27,7 +29,10 @@ function isDirectPublicSource(component: ArchitectureComponent): boolean {
 export function analyzeArchitectureValidation(
   architecture: Architecture,
 ): ValidationAnalysis {
-  const findings: ArchitectureFinding[] = [];
+  architecture = withEffectiveZones(architecture);
+  const findings: ArchitectureFinding[] = analyzeNetwork(architecture).filter(
+    (finding) => finding.category === 'validation',
+  );
   const componentsById = componentMap(architecture);
   const componentIdCounts = new Map<string, number>();
   const connectionIdCounts = new Map<string, number>();
@@ -184,7 +189,11 @@ export function analyzeArchitectureValidation(
   }
 
   for (const component of architecture.components) {
-    if (component.critical && (degree.get(component.id) ?? 0) === 0) {
+    if (
+      !attachmentOnlyKinds.has(component.kind) &&
+      component.critical &&
+      (degree.get(component.id) ?? 0) === 0
+    ) {
       findings.push(
         createFinding({
           id: `validation:isolated-critical:${component.id}`,
@@ -220,7 +229,11 @@ export function analyzeArchitectureValidation(
   } else {
     const reachable = reachableComponentIds(architecture, entryIds);
     for (const component of architecture.components) {
-      if (component.critical && !reachable.has(component.id)) {
+      if (
+        !attachmentOnlyKinds.has(component.kind) &&
+        component.critical &&
+        !reachable.has(component.id)
+      ) {
         findings.push(
           createFinding({
             id: `validation:unreachable-critical:${component.id}`,

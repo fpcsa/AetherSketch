@@ -24,7 +24,42 @@ export type ConnectionType = (typeof CONNECTION_TYPES)[number];
 
 export type Actor = 'human' | 'agent' | 'system';
 
+export type NetworkRoute = {
+  destination: 'internet' | 'external-network';
+  targetId: string;
+};
+
+/** Allow rules for initiated connections; response traffic is stateful. */
+export type NetworkRule = {
+  peerId: string;
+  protocol: string;
+};
+
+export type NetworkPlacement = {
+  virtualNetworkId?: string;
+  subnetIds?: string[];
+  securityGroupIds?: string[];
+  publicAddress?: boolean;
+  internetAccessRequired?: boolean;
+};
+
 export type ComponentConfigurationMap = {
+  'virtual-network': { cidr: string };
+  subnet: {
+    cidr: string;
+    visibility: 'public' | 'private';
+    routes: NetworkRoute[];
+  };
+  'nat-gateway': { monthlyDataGb: number };
+  'security-group': { ingress: NetworkRule[]; egress: NetworkRule[] };
+  'private-endpoint': { serviceId: string; monthlyDataGb: number };
+  'external-network': { cidr: string };
+  'vpn-connection': {
+    gatewayId: string;
+    externalNetworkId: string;
+    tunnels: number;
+    encrypted: boolean;
+  };
   internet: {
     entryType: 'public-internet';
   };
@@ -157,6 +192,7 @@ export type ArchitectureComponentBase<K extends ComponentKind> = {
   critical: boolean;
   position: ComponentPosition;
   metadata: JsonObject;
+  network?: NetworkPlacement;
 };
 
 export type ArchitectureComponent = {
@@ -265,11 +301,16 @@ type AddComponentCommon<K extends ComponentKind> = {
   critical?: boolean;
   position?: ComponentPosition;
   metadata?: JsonObject;
+  network?: NetworkPlacement;
 };
 
-export type AddComponentInput = {
-  [K in ComponentKind]: AddComponentCommon<K>;
-}[ComponentKind];
+export type AddComponentInput =
+  | {
+      [K in ComponentKind]: AddComponentCommon<K>;
+    }[ComponentKind]
+  | (Omit<AddComponentCommon<ComponentKind>, 'configuration'> & {
+      configuration?: never;
+    });
 
 export type ComponentUpdate<K extends ComponentKind = ComponentKind> = {
   name?: string;
@@ -282,6 +323,7 @@ export type ComponentUpdate<K extends ComponentKind = ComponentKind> = {
   estimatedMonthlyCost?: number;
   critical?: boolean;
   metadata?: JsonObject;
+  network?: NetworkPlacement;
 };
 
 export type ConnectComponentsInput = {

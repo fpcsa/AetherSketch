@@ -1,3 +1,5 @@
+import { analyzeNetwork } from './network';
+import { withEffectiveZones } from '../network/structure';
 import type { Architecture, ArchitectureComponent } from '../model';
 import { createFinding } from './finding';
 import {
@@ -31,8 +33,20 @@ type SecurityRuleInput = {
 };
 
 export function analyzeSecurity(architecture: Architecture): ScoreAnalysis {
+  architecture = withEffectiveZones(architecture);
   const adjustments: ScoreAdjustment[] = [];
-  const findings: ArchitectureFinding[] = [];
+  const findings: ArchitectureFinding[] = analyzeNetwork(architecture).filter(
+    (finding) => finding.category === 'security',
+  );
+  adjustments.push(
+    ...findings.map((finding) => ({
+      code: finding.code,
+      delta: Number(finding.evidence.scoreDelta ?? 0),
+      reason: finding.message,
+      componentId: finding.componentId,
+      edgeId: finding.edgeId,
+    })),
+  );
 
   const applyRule = (input: SecurityRuleInput) => {
     adjustments.push({

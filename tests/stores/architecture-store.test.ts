@@ -39,6 +39,26 @@ function createTestStore(isAgentEditingEnabled = () => false) {
 }
 
 describe('architecture store mutations', () => {
+  it('rehydrates network membership, nested rules, pending subnet edits, and undo history', () => {
+    const storage = createPersistStorage(createMemoryStorage());
+    const first = createArchitectureStore({ storage });
+    first
+      .getState()
+      .loadArchitecture(getArchitectureTemplate('private-network'));
+    first
+      .getState()
+      .updateComponent('net-private-b', { configuration: { routes: [] } });
+    first.getState().undo();
+    first.getState().addComponent({ kind: 'subnet' });
+    const second = createArchitectureStore({ storage });
+    expect(second.getState().persistenceRecoveryNotice).toBeNull();
+    expect(second.getState().architecture).toEqual(
+      first.getState().architecture,
+    );
+    expect(second.getState().past).toEqual(first.getState().past);
+    expect(second.getState().activity).toEqual(first.getState().activity);
+  });
+
   it('enforces agent permission at the domain boundary, including after revocation', () => {
     let enabled = false;
     const store = createTestStore(() => enabled);

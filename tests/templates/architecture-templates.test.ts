@@ -8,15 +8,21 @@ import {
 } from '../../src/templates';
 
 describe('architecture templates', () => {
-  it('provides the three requested templates', () => {
+  it('provides the canonical templates and network example', () => {
     expect(architectureTemplateIds).toEqual([
       'ecommerce-production',
       'serverless-api',
       'event-processing',
+      'private-network',
     ]);
     expect(
       listArchitectureTemplates().map((template) => template.name),
-    ).toEqual(['Ecommerce Production', 'Serverless API', 'Event Processing']);
+    ).toEqual([
+      'Ecommerce Production',
+      'Serverless API',
+      'Event Processing',
+      'Private Network & Hybrid Access',
+    ]);
     expect(DEFAULT_ARCHITECTURE_TEMPLATE_ID).toBe('ecommerce-production');
   });
 

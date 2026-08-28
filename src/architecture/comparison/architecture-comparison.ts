@@ -65,6 +65,7 @@ function componentChangedFields(
     'locked',
     'critical',
     'position',
+    'network',
   ] as const;
 
   for (const field of scalarFields) {

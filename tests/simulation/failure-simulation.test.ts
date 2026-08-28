@@ -11,6 +11,92 @@ import {
 } from '../helpers/architecture-fixtures';
 
 describe('deterministic failure simulation', () => {
+  it('loses private egress when a remote NAT zone fails and survives after routing to a local NAT', () => {
+    const architecture = getArchitectureTemplate('private-network');
+    const before = JSON.stringify(architecture);
+    const failed = simulateFailure(architecture, {
+      scope: 'availability-zone',
+      target: 'eu-west-1a',
+    });
+    expect(failed.failedComponentIds).toEqual(
+      expect.arrayContaining(['net-public-a', 'net-nat-a']),
+    );
+    expect(failed.failedComponentIds).not.toContain('net-app');
+    expect(failed.degradedComponentIds).toContain('net-app');
+    expect(failed.criticalPathsRemaining).toBe(false);
+    expect(
+      failed.findings.find((finding) => finding.code === 'NETWORK_EGRESS_LOST'),
+    ).toMatchObject({
+      componentId: 'net-app',
+      evidence: { natGatewayIds: ['net-nat-a'] },
+    });
+    expect(JSON.stringify(architecture)).toBe(before);
+    architecture.components.push(
+      createComponentFromCatalog(
+        {
+          id: 'public-b',
+          kind: 'subnet',
+          availabilityZones: ['eu-west-1b'],
+          network: { virtualNetworkId: 'net-vpc' },
+          configuration: {
+            cidr: '10.0.3.0/24',
+            visibility: 'public',
+            routes: [{ destination: 'internet', targetId: 'net-igw' }],
+          },
+        },
+        { provider: 'generic', region: architecture.region },
+      ),
+      createComponentFromCatalog(
+        {
+          id: 'nat-b',
+          kind: 'nat-gateway',
+          network: { virtualNetworkId: 'net-vpc', subnetIds: ['public-b'] },
+        },
+        { provider: 'generic', region: architecture.region },
+      ),
+    );
+    const subnet = architecture.components.find(
+      (component) => component.id === 'net-private-b',
+    )!;
+    if (subnet.kind !== 'subnet') throw new Error('Expected subnet');
+    subnet.configuration.routes[0].targetId = 'nat-b';
+    const recovered = simulateFailure(architecture, {
+      scope: 'availability-zone',
+      target: 'eu-west-1a',
+    });
+    expect(recovered.status).toBe('degraded');
+    expect(recovered.criticalPathsRemaining).toBe(true);
+    expect(recovered.degradedComponentIds).not.toContain('net-app');
+    expect(
+      recovered.findings.some(
+        (finding) => finding.code === 'NETWORK_EGRESS_LOST',
+      ),
+    ).toBe(false);
+  });
+
+  it('propagates boundary and VPN failures through implicit network dependencies', () => {
+    const architecture = getArchitectureTemplate('private-network');
+    const networkFailure = simulateFailure(architecture, {
+      scope: 'component',
+      target: 'net-vpc',
+    });
+    expect(networkFailure.failedComponentIds).toEqual(
+      expect.arrayContaining([
+        'net-app',
+        'net-nat-a',
+        'net-endpoint',
+        'net-vpn',
+      ]),
+    );
+    const vpnFailure = simulateFailure(architecture, {
+      scope: 'component',
+      target: 'net-vpn',
+    });
+    expect(vpnFailure.criticalPathsRemaining).toBe(false);
+    expect(vpnFailure.impactedEdgeIds).toContain('net-office-app');
+    expect(vpnFailure.failedComponentIds).not.toContain('net-app');
+  });
+
   it.each(['internet-gateway', 'virtual-private-gateway'] as const)(
     'treats %s as a regional entry and preserves its path during a zone outage',
     (kind) => {

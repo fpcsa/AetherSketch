@@ -101,6 +101,73 @@ async function execute<T>(
 }
 
 describe('WebMCP mutation tools', () => {
+  it('edits typed network routes and attachments, protects references and locks, and preserves undo', async () => {
+    const { tools, architectureStore, intelligenceStore } = createHarness();
+    architectureStore
+      .getState()
+      .loadArchitecture(getArchitectureTemplate('private-network'));
+    const update = toolNamed(tools, 'update_component');
+    const original = architectureStore.getState().architecture;
+    expect(
+      await execute(update, {
+        componentId: 'net-private-b',
+        changes: {
+          configuration: {
+            routes: [{ destination: 'external-network', targetId: 'net-vpn' }],
+          },
+        },
+      }),
+    ).toMatchObject({ ok: true });
+    expect(
+      analyzeArchitecture(
+        architectureStore.getState().architecture,
+      ).findings.some(
+        (finding) => finding.code === 'INTERNET_EGRESS_UNREACHABLE',
+      ),
+    ).toBe(true);
+    architectureStore.getState().undo();
+    expect(architectureStore.getState().architecture).toEqual(original);
+    expect(
+      await execute(update, {
+        componentId: 'net-app',
+        changes: {
+          network: { virtualNetworkId: 'net-vpc', subnetIds: ['missing'] },
+        },
+      }),
+    ).toMatchObject({ ok: false, error: { code: 'INVALID_CONFIGURATION' } });
+    expect(architectureStore.getState().architecture).toEqual(original);
+    expect(
+      await execute(toolNamed(tools, 'remove_component'), {
+        componentId: 'net-nat-a',
+      }),
+    ).toMatchObject({ ok: false, error: { code: 'INVALID_CONFIGURATION' } });
+    architectureStore.getState().lockComponent('net-app');
+    expect(
+      await execute(update, {
+        componentId: 'net-app',
+        changes: { network: {} },
+      }),
+    ).toMatchObject({ ok: false, error: { code: 'COMPONENT_LOCKED' } });
+    expect(
+      await execute(update, {
+        componentId: 'net-rules',
+        changes: {
+          configuration: {
+            ingress: [{ peerId: 'net-external', protocol: 'HTTPS' }],
+          },
+        },
+      }),
+    ).toMatchObject({ ok: true });
+    expect(
+      await execute(toolNamed(tools, 'add_component'), {
+        kind: 'nat-gateway',
+        network: { virtualNetworkId: 'net-vpc', subnetIds: ['net-public-a'] },
+        configuration: { monthlyDataGb: 50 },
+      }),
+    ).toMatchObject({ ok: true });
+    intelligenceStore.getState().dispose();
+  });
+
   it('adds and connects both gateways, validates ASN edits, and enforces locks', async () => {
     const { tools, architectureStore, intelligenceStore } = createHarness();
     const add = toolNamed(tools, 'add_component');

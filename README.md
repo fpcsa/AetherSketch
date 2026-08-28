@@ -26,8 +26,9 @@ A separate chat UI would add another conversation surface and risk a second repr
 
 ## Features
 
-- Interactive XYFlow canvas, 23 component kinds (including Internet Gateway and Virtual Private Gateway), AWS/Generic labels, typed inspectors, and semantic connections.
-- Ecommerce, Serverless API, Event Processing, and blank starting points; validated JSON import/export.
+- Interactive XYFlow canvas, 30 component kinds, Generic labels by default with optional AWS mappings, typed inspectors, and semantic connections.
+- Ecommerce, Serverless API, Event Processing, Private Network & Hybrid Access, and blank starting points; validated JSON import/export.
+- Virtual networks and subnets, NAT routing, attached security rules, private endpoints, and VPN connections with modeled effects on analysis. See [network modeling and demo](docs/NETWORKING.md).
 - Deterministic cost, resilience, security, structural findings, and constraint evaluation.
 - Component, availability-zone, and region failure simulations with visible critical-path impact.
 - Review/Edit authority, component locks, agent activity, undo/redo, and session comparison.
@@ -135,7 +136,7 @@ Use the exact [eleven-step demo script](docs/DEMO.md): reset Ecommerce, analyze 
 
 ## Architecture analysis model
 
-The Network catalog includes **Internet Gateway** (public routing) and **Virtual Private Gateway** (private connectivity, with a validated private ASN). Both are modeled as regional managed gateways: an individual gateway or its region can fail; they are not global services. Connections describe topology, not deployed route tables or VPN tunnels. Their $0 resource planning baseline excludes VPN connections, dedicated links, and traffic charges.
+The Network catalog includes **Internet Gateway** (public routing) and **Virtual Private Gateway** (private connectivity, with a validated private ASN). Both are modeled as regional managed gateways: an individual gateway or its region can fail; they are not global services. Attached networks use explicit subnet routes and separately modeled VPN connections. Their $0 gateway-resource baseline excludes the separate VPN connection estimate, dedicated links and transfer charges. See [network modeling](docs/NETWORKING.md).
 
 **Service labels → Generic** removes generated AWS service names from the palette, canvas, inspector, container launch options, and built-in event/queue protocol labels (including accessible edge names). Cost disclaimers and protocol hints are provider neutral. This is a display preference: it preserves component names, user-entered settings, provider identifiers, exported IR, and agent tool data. It does not convert an existing AWS architecture to another provider. New components whose actual provider is Generic use generic service identifiers.
 

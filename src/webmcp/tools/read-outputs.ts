@@ -1,3 +1,4 @@
+import { effectiveZones } from '../../architecture/network/structure';
 import { getCatalogEntry } from '../../architecture/catalog';
 import type {
   ArchitectureAnalysis,
@@ -72,8 +73,9 @@ export function compactArchitecture(
       provider: component.provider,
       service: component.service,
       region: component.region,
-      availabilityZones: component.availabilityZones,
+      availabilityZones: effectiveZones(architecture, component),
       replicas: component.replicas,
+      network: component.network,
       critical: component.critical,
       locked: component.locked,
     })),
@@ -148,8 +150,9 @@ export function inspectArchitectureComponent(
     provider: component.provider,
     service: component.service,
     region: component.region,
-    availabilityZones: component.availabilityZones,
+    availabilityZones: effectiveZones(architecture, component),
     replicas: component.replicas,
+    network: component.network,
     configuration: component.configuration,
     estimatedMonthlyCost: component.estimatedMonthlyCost,
     locked: component.locked,

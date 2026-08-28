@@ -1,4 +1,5 @@
 import { createComponentFromCatalog } from '../architecture/catalog';
+import { createPrivateNetworkTemplate } from './private-network-template';
 import {
   ARCHITECTURE_SCHEMA_VERSION,
   cloneArchitecture,
@@ -15,6 +16,7 @@ export const architectureTemplateIds = [
   'ecommerce-production',
   'serverless-api',
   'event-processing',
+  'private-network',
 ] as const;
 
 export type ArchitectureTemplateId = (typeof architectureTemplateIds)[number];
@@ -340,6 +342,7 @@ export const architectureTemplates: Readonly<
   'ecommerce-production': ecommerceProductionTemplate,
   'serverless-api': serverlessApiTemplate,
   'event-processing': eventProcessingTemplate,
+  'private-network': createPrivateNetworkTemplate(),
 };
 
 export function getArchitectureTemplate(

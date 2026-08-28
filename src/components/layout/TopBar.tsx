@@ -36,6 +36,7 @@ const templateLabels: Record<ArchitectureTemplateId, string> = {
   'ecommerce-production': 'Ecommerce Production',
   'serverless-api': 'Serverless API',
   'event-processing': 'Event Processing',
+  'private-network': 'Private Network & Hybrid Access',
 };
 
 function safeFilename(name: string): string {

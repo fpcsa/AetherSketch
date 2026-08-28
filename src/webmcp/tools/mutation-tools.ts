@@ -100,6 +100,7 @@ function componentSummary(component: ArchitectureComponent) {
     region: component.region,
     availabilityZones: component.availabilityZones,
     replicas: component.replicas,
+    network: component.network,
     critical: component.critical,
     locked: component.locked,
     configuration: component.configuration,

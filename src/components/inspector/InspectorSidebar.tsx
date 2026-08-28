@@ -70,7 +70,7 @@ export function InspectorSidebar() {
       {activePanel === 'inspector' ? (
         <div className="flex min-h-0 flex-1 flex-col">
           <section
-            className={`flex min-h-0 flex-col ${selectedComponent || selectedConnection ? 'flex-[1.15]' : 'h-60 shrink-0'}`}
+            className={`flex min-h-0 flex-col ${selectedComponent || selectedConnection ? 'flex-[3]' : 'h-60 shrink-0'}`}
             aria-labelledby="inspector-title"
           >
             <div className="flex h-9 shrink-0 items-center border-b border-slate-800/80 px-3">
@@ -123,7 +123,7 @@ export function InspectorSidebar() {
           </section>
 
           <section
-            className="flex min-h-0 flex-1 flex-col border-t border-slate-800/90"
+            className="flex min-h-0 max-h-[220px] flex-1 flex-col border-t border-slate-800/90"
             aria-labelledby="constraints-title"
           >
             <div className="flex h-9 shrink-0 items-center border-b border-slate-800/80 px-3">

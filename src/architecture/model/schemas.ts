@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { networkReferenceIssues, isIpv4Cidr } from '../network/structure';
 
 import {
   ARCHITECTURE_SCHEMA_VERSION,
@@ -12,6 +13,45 @@ import {
 const idSchema = z.string().trim().min(1).max(128);
 const shortTextSchema = z.string().trim().min(1).max(240);
 const regionSchema = z.string().trim().min(1).max(64);
+
+const uniqueIds = z
+  .array(idSchema)
+  .max(32)
+  .refine(
+    (ids) => new Set(ids).size === ids.length,
+    'Network references must be unique.',
+  );
+export const networkPlacementSchema = z
+  .object({
+    virtualNetworkId: idSchema.optional(),
+    subnetIds: uniqueIds.optional(),
+    securityGroupIds: uniqueIds.optional(),
+    publicAddress: z.boolean().optional(),
+    internetAccessRequired: z.boolean().optional(),
+  })
+  .strict();
+const cidrSchema = z
+  .string()
+  .max(32)
+  .refine(
+    isIpv4Cidr,
+    'Use a canonical IPv4 network CIDR, such as 10.0.0.0/16.',
+  );
+const networkRuleSchema = z
+  .object({
+    peerId: idSchema.describe(
+      'Component ID, * for any peer, or internet for public traffic.',
+    ),
+    protocol: z
+      .string()
+      .trim()
+      .min(1)
+      .max(64)
+      .describe(
+        'Connection protocol label, case-insensitive; * allows all protocols.',
+      ),
+  })
+  .strict();
 
 export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
   z.union([
@@ -79,9 +119,95 @@ const componentBaseFields = {
     })
     .strict(),
   metadata: metadataSchema,
+  network: networkPlacementSchema.optional(),
 };
 
 export const componentSchemas = [
+  z
+    .object({
+      ...componentBaseFields,
+      kind: z.literal('virtual-network'),
+      configuration: z.object({ cidr: cidrSchema }).strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...componentBaseFields,
+      kind: z.literal('subnet'),
+      configuration: z
+        .object({
+          cidr: cidrSchema,
+          visibility: z.enum(['public', 'private']),
+          routes: z
+            .array(
+              z
+                .object({
+                  destination: z.enum(['internet', 'external-network']),
+                  targetId: idSchema,
+                })
+                .strict(),
+            )
+            .max(32),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...componentBaseFields,
+      kind: z.literal('nat-gateway'),
+      configuration: z
+        .object({
+          monthlyDataGb: z.number().finite().min(0).max(1_000_000_000),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...componentBaseFields,
+      kind: z.literal('security-group'),
+      configuration: z
+        .object({
+          ingress: z.array(networkRuleSchema).max(64),
+          egress: z.array(networkRuleSchema).max(64),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...componentBaseFields,
+      kind: z.literal('private-endpoint'),
+      configuration: z
+        .object({
+          serviceId: z.string().trim().max(128),
+          monthlyDataGb: z.number().finite().min(0).max(1_000_000_000),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...componentBaseFields,
+      kind: z.literal('external-network'),
+      configuration: z.object({ cidr: cidrSchema }).strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...componentBaseFields,
+      kind: z.literal('vpn-connection'),
+      configuration: z
+        .object({
+          gatewayId: z.string().trim().max(128),
+          externalNetworkId: z.string().trim().max(128),
+          tunnels: z.number().int().min(1).max(2),
+          encrypted: z.boolean(),
+        })
+        .strict(),
+    })
+    .strict(),
   z
     .object({
       ...componentBaseFields,
@@ -402,6 +528,13 @@ export const architectureSchema: z.ZodType<Architecture> = z
   })
   .strict()
   .superRefine((architecture, context) => {
+    for (const issue of networkReferenceIssues(architecture)) {
+      context.addIssue({
+        code: 'custom',
+        message: issue.message,
+        path: ['components', issue.index, ...issue.path],
+      });
+    }
     const componentIds = new Set<string>();
 
     architecture.components.forEach((component, index) => {

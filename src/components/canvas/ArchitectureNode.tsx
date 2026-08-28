@@ -1,3 +1,4 @@
+import { attachmentOnlyKinds } from '../../architecture/network/structure';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { CircleX, LockKeyhole, ShieldAlert, TriangleAlert } from 'lucide-react';
 
@@ -33,6 +34,34 @@ export function ArchitectureNode({
         ? 'Degraded'
         : 'Operational';
 
+  if (data.boundary)
+    return (
+      <article
+        className={`h-full w-full border-2 border-dashed ${simulationState === 'failed' ? 'border-rose-400/80 bg-rose-950/10' : component.kind === 'subnet' ? 'border-cyan-400/40 bg-cyan-400/[0.03]' : 'border-violet-400/40 bg-violet-400/[0.02]'} ${selected ? 'ring-2 ring-cyan-300/70' : ''}`}
+        aria-label={`${component.name}, ${catalogDescriptionMode === 'aws' ? catalog.aws.displayName : catalog.displayName}, ${statusLabel}`}
+        data-component-id={component.id}
+        data-simulation-state={simulationState}
+      >
+        <div className="max-w-full px-3 py-2">
+          <h3 className="text-[13px] font-semibold text-slate-200">
+            {component.name} {component.locked ? '· Locked' : ''}
+          </h3>
+          <p className="text-[11px] text-slate-400">
+            {catalogDescriptionMode === 'aws'
+              ? catalog.aws.displayName
+              : catalog.displayName}{' '}
+            ·{' '}
+            {component.kind === 'subnet' || component.kind === 'virtual-network'
+              ? component.configuration.cidr
+              : ''}{' '}
+            {component.kind === 'subnet'
+              ? `· ${component.configuration.visibility} · ${component.availabilityZones.join(', ')}`
+              : ''}
+          </p>
+        </div>
+      </article>
+    );
+
   return (
     <article
       className={`group relative min-h-[104px] w-[216px] border shadow-lg transition-[border-color,box-shadow,background-color] ${stateClasses[simulationState]} ${selected ? 'ring-2 ring-cyan-300/70 ring-offset-2 ring-offset-[#090d13]' : ''}`}
@@ -58,13 +87,15 @@ export function ArchitectureNode({
         </div>
       ) : null}
 
-      <Handle
-        type="target"
-        position={Position.Left}
-        isConnectable={isConnectable}
-        className="!size-2.5 !border-2 !border-[#090d13] !bg-slate-500 transition-colors group-hover:!bg-cyan-300"
-        aria-label={`Connect into ${component.name}`}
-      />
+      {!attachmentOnlyKinds.has(component.kind) ? (
+        <Handle
+          type="target"
+          position={Position.Left}
+          isConnectable={isConnectable}
+          className="!size-2.5 !border-2 !border-[#090d13] !bg-slate-500 transition-colors group-hover:!bg-cyan-300"
+          aria-label={`Connect into ${component.name}`}
+        />
+      ) : null}
 
       <div className="flex min-h-[58px] items-start gap-2.5 px-3 pb-2 pt-3">
         <div
@@ -99,6 +130,15 @@ export function ArchitectureNode({
         </div>
       </div>
 
+      {data.membershipNames?.length ? (
+        <p
+          className="border-t border-slate-700/60 px-3 py-1 text-[10px] leading-4 text-cyan-300"
+          title={data.membershipNames.join(', ')}
+        >
+          {data.membershipNames.join(' · ')}
+        </p>
+      ) : null}
+
       <div className="flex h-7 items-center border-t border-slate-700/60 px-3 text-[10px] uppercase tracking-[0.1em]">
         <span
           className={
@@ -128,13 +168,15 @@ export function ArchitectureNode({
         </span>
       </div>
 
-      <Handle
-        type="source"
-        position={Position.Right}
-        isConnectable={isConnectable}
-        className="!size-2.5 !border-2 !border-[#090d13] !bg-slate-500 transition-colors group-hover:!bg-cyan-300"
-        aria-label={`Connect from ${component.name}`}
-      />
+      {!attachmentOnlyKinds.has(component.kind) ? (
+        <Handle
+          type="source"
+          position={Position.Right}
+          isConnectable={isConnectable}
+          className="!size-2.5 !border-2 !border-[#090d13] !bg-slate-500 transition-colors group-hover:!bg-cyan-300"
+          aria-label={`Connect from ${component.name}`}
+        />
+      ) : null}
     </article>
   );
 }

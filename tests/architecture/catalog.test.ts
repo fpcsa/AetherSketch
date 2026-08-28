@@ -9,9 +9,16 @@ import { architectureComponentSchema } from '../../src/architecture/model';
 
 describe('component catalog', () => {
   it('defines all supported MVP component kinds with useful defaults', () => {
-    expect(componentKinds).toHaveLength(23);
+    expect(componentKinds).toHaveLength(30);
     expect(new Set(componentKinds)).toEqual(
       new Set([
+        'virtual-network',
+        'subnet',
+        'nat-gateway',
+        'security-group',
+        'private-endpoint',
+        'external-network',
+        'vpn-connection',
         'internet',
         'internet-gateway',
         'virtual-private-gateway',

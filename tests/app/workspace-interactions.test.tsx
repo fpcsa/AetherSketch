@@ -41,6 +41,58 @@ function resetWorkspace() {
 }
 
 describe('human architecture workspace', () => {
+  it('edits routes and attached policies through the network inspector and defaults to Generic labels', () => {
+    expect(useWorkspaceUiStore.getInitialState().catalogDescriptionMode).toBe(
+      'generic',
+    );
+    useWorkspaceUiStore.setState({ catalogDescriptionMode: 'generic' });
+    render(<App />);
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Architecture template' }),
+      { target: { value: 'private-network' } },
+    );
+    act(() => useWorkspaceUiStore.getState().selectComponent('net-private-b'));
+    expect(
+      screen.getByRole('combobox', { name: 'Virtual network' }),
+    ).toHaveValue('net-vpc');
+    fireEvent.click(screen.getByRole('button', { name: 'Remove route 1' }));
+    expect(
+      useArchitectureStore
+        .getState()
+        .architecture.components.find(
+          (component) => component.id === 'net-private-b',
+        )?.configuration,
+    ).toMatchObject({
+      routes: [{ destination: 'external-network', targetId: 'net-vpn' }],
+    });
+    act(() => useWorkspaceUiStore.getState().selectComponent('net-app'));
+    expect(screen.getByLabelText('Internet reachability')).toHaveTextContent(
+      'Internet unreachable',
+    );
+    expect(
+      screen.getByRole('textbox', { name: 'Availability zones' }),
+    ).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    act(() => useWorkspaceUiStore.getState().selectComponent('net-app'));
+    expect(screen.getByLabelText('Internet reachability')).toHaveTextContent(
+      'Internet reachable',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Lock component' }));
+    expect(
+      screen.getByRole('checkbox', { name: 'Requires HTTPS internet egress' }),
+    ).toBeDisabled();
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Catalog service descriptions' }),
+      { target: { value: 'aws' } },
+    );
+    expect(screen.getByRole('combobox', { name: 'VPC' })).toBeDisabled();
+    expect(
+      within(screen.getByRole('list', { name: 'Network catalog' })).getByText(
+        'AWS NAT Gateway',
+      ),
+    ).toBeInTheDocument();
+  });
+
   beforeEach(() => {
     delete (document as Document & { modelContext?: unknown }).modelContext;
     useWebMcpStore.getState().reset();

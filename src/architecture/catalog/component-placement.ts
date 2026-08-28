@@ -1,3 +1,4 @@
+import { networkLayout } from '../network/layout';
 import type { Architecture, ComponentPosition } from '../model';
 
 export function nextAutomaticPosition(
@@ -6,16 +7,19 @@ export function nextAutomaticPosition(
   const origin = { x: 48, y: 48 };
   const spacing = { x: 304, y: 208 };
   const columns = 3;
+  const occupiedRects = [...networkLayout(architecture).values()];
 
   for (let index = 0; index < 1000; index += 1) {
     const candidate = {
       x: origin.x + (index % columns) * spacing.x,
       y: origin.y + Math.floor(index / columns) * spacing.y,
     };
-    const occupied = architecture.components.some(
-      (component) =>
-        Math.abs(component.position.x - candidate.x) < 248 &&
-        Math.abs(component.position.y - candidate.y) < 160,
+    const occupied = occupiedRects.some(
+      (rect) =>
+        candidate.x < rect.x + rect.width + 32 &&
+        candidate.x + 248 > rect.x &&
+        candidate.y < rect.y + rect.height + 32 &&
+        candidate.y + 160 > rect.y,
     );
     if (!occupied) return candidate;
   }

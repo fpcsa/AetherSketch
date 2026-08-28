@@ -1,3 +1,4 @@
+import { withEffectiveZones } from '../network/structure';
 import type { Architecture } from '../model';
 import {
   encryptionAtRestState,
@@ -45,6 +46,7 @@ export function evaluateConstraints(
   resilience: ScoreAnalysis,
   security: ScoreAnalysis,
 ): ConstraintEvaluation {
+  architecture = withEffectiveZones(architecture);
   const budget = architecture.constraints.maximumMonthlyCost;
   const withinBudget =
     budget === undefined ? null : cost.totalEstimatedMonthlyCost <= budget;

@@ -1,3 +1,4 @@
+import { referencedComponentIds } from '../architecture/network/structure';
 import { create } from 'zustand';
 import {
   createJSONStorage,
@@ -199,7 +200,14 @@ function mutationConfigurationError(
 
   throw new ArchitectureDomainError(
     'INVALID_CONFIGURATION',
-    'The component configuration is invalid.',
+    isArchitectureDomainError(error) &&
+      Array.isArray(error.details?.issues) &&
+      error.details.issues[0] &&
+      typeof error.details.issues[0] === 'object' &&
+      !Array.isArray(error.details.issues[0]) &&
+      typeof error.details.issues[0].message === 'string'
+      ? `Invalid configuration: ${error.details.issues[0].message}`
+      : 'The component configuration is invalid.',
     {
       componentId,
       details:
@@ -428,6 +436,7 @@ export function createArchitectureStore(
               'replicas',
               'critical',
               'configuration',
+              'network',
               'position',
             ]);
             const current = get().architecture;
@@ -476,6 +485,7 @@ export function createArchitectureStore(
               'replicas',
               'critical',
               'configuration',
+              'network',
             ]);
             const current = get().architecture;
             const component = requireUnlockedComponent(current, componentId);
@@ -517,6 +527,17 @@ export function createArchitectureStore(
             requireAgentPermission(actor);
             const current = get().architecture;
             const component = requireUnlockedComponent(current, componentId);
+            const dependent = current.components.find(
+              (candidate) =>
+                candidate.id !== componentId &&
+                referencedComponentIds(candidate).includes(componentId),
+            );
+            if (dependent)
+              throw new ArchitectureDomainError(
+                'INVALID_CONFIGURATION',
+                `Detach network references from ${dependent.name} before deleting ${component.name}.`,
+                { componentId },
+              );
             const removedConnections = current.connections.filter(
               (connection) =>
                 connection.source === componentId ||

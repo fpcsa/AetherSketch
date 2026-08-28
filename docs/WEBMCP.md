@@ -251,3 +251,7 @@ AetherSketch compiles against the official upstream `webmcp-types` package, curr
 The current draft specification has evolved ahead of that published type release in one consumer-facing area: it also documents `ModelContext.executeTool`, while `webmcp-types@0.1.5` does not yet declare it. AetherSketch is a tool provider and does not need to invoke that consumer method, so no local type augmentation or compatibility shim was added.
 
 The available API does not define an output schema field, so AetherSketch returns compact structured objects from `execute` without inventing `outputSchema`. Registration teardown uses the specified abort signal because there is no `unregisterTool` method in the verified type surface.
+
+## Network extension
+
+The existing tool lifecycle also covers the seven network kinds. Add/update accept a typed `network` placement object; configuration supports route and allow-rule arrays. Read tools include placement and effective subnet-derived zones. Removing referenced resources is blocked until their memberships, policies, routes and endpoint/VPN attachments are detached. See [network contracts and example](NETWORKING.md).

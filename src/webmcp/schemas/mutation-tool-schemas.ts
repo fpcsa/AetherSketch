@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { componentKinds } from '../../architecture/catalog';
 import {
   componentSchemas,
+  networkPlacementSchema,
   CONNECTION_TYPES,
   type ComponentConfigurationMap,
   type ComponentKind,
@@ -23,6 +24,26 @@ const configurationValueSchema = z.union([
   z.number().finite(),
   z.boolean(),
   z.null(),
+  z
+    .array(
+      z
+        .object({
+          destination: z.enum(['internet', 'external-network']),
+          targetId: idSchema,
+        })
+        .strict(),
+    )
+    .max(32),
+  z
+    .array(
+      z
+        .object({
+          peerId: idSchema,
+          protocol: z.string().trim().min(1).max(64),
+        })
+        .strict(),
+    )
+    .max(64),
 ]);
 const configurationPatchSchema = z
   .record(z.string().trim().min(1).max(128), configurationValueSchema)
@@ -38,6 +59,11 @@ export const addComponentInputSchema = z
     region: regionSchema.optional(),
     availabilityZones: availabilityZonesSchema.optional(),
     replicas: z.number().int().min(1).max(10_000).optional(),
+    network: networkPlacementSchema
+      .optional()
+      .describe(
+        'Replace network placement and policy attachments; use {} to detach. Assign virtualNetworkId and subnetIds together.',
+      ),
     configuration: configurationPatchSchema
       .optional()
       .describe('Kind-specific initial configuration overrides.'),
@@ -54,6 +80,11 @@ export const updateComponentInputSchema = z
         region: regionSchema.optional(),
         availabilityZones: availabilityZonesSchema.optional(),
         replicas: z.number().int().min(1).max(10_000).optional(),
+        network: networkPlacementSchema
+          .optional()
+          .describe(
+            'Replace network placement and policy attachments; use {} to detach. Assign virtualNetworkId and subnetIds together.',
+          ),
         configuration: configurationPatchSchema
           .optional()
           .describe('Kind-specific configuration changes.'),

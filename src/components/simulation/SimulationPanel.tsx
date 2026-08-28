@@ -8,6 +8,7 @@ import {
 import { useMemo, useState } from 'react';
 
 import type { FailureScope } from '../../architecture/simulation';
+import { effectiveZones } from '../../architecture/network/structure';
 import { useArchitectureStore } from '../../stores/architecture-store';
 import { useIntelligenceStore } from '../../stores/intelligence-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
@@ -51,8 +52,8 @@ export function SimulationPanel() {
     if (scope === 'availability-zone') {
       return [
         ...new Set(
-          architecture.components.flatMap(
-            (component) => component.availabilityZones,
+          architecture.components.flatMap((component) =>
+            effectiveZones(architecture, component),
           ),
         ),
       ]
@@ -64,7 +65,7 @@ export function SimulationPanel() {
     ]
       .sort()
       .map((region) => ({ value: region, label: region }));
-  }, [architecture.components, scope]);
+  }, [architecture, scope]);
   const selectedTarget = options.some((option) => option.value === target)
     ? target
     : (options[0]?.value ?? '');
@@ -192,7 +193,7 @@ export function SimulationPanel() {
               <p className="mt-2 text-[12px] leading-4 text-slate-400">
                 {simulation.criticalPathsRemaining
                   ? 'Every critical component remains reachable through surviving capacity.'
-                  : 'At least one critical component is failed or unreachable from the entry path.'}
+                  : 'A critical component, connection, or required internet route is unavailable.'}
               </p>
             </div>
 
@@ -232,6 +233,26 @@ export function SimulationPanel() {
               onSelect={focusComponent}
               empty="No components are degraded."
             />
+
+            {simulation.findings
+              .filter((finding) => finding.code.startsWith('NETWORK_'))
+              .map((finding) => (
+                <section
+                  key={finding.id}
+                  className="border border-amber-400/30 bg-amber-400/5 p-3"
+                  aria-label={finding.title}
+                >
+                  <h3 className="text-[12px] font-semibold text-amber-300">
+                    {finding.title}
+                  </h3>
+                  <p className="mt-2 text-[12px] leading-5 text-slate-300">
+                    {finding.message}
+                  </p>
+                  <p className="mt-2 text-[11px] leading-4 text-slate-400">
+                    {finding.remediation}
+                  </p>
+                </section>
+              ))}
 
             <div className="flex items-start gap-2 border border-slate-800/80 bg-slate-900/20 p-2.5">
               <ShieldCheck

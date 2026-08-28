@@ -1,3 +1,5 @@
+import { connectionNetworkPath, hasModeledIngress } from '../network/routing';
+import { attachmentOnlyKinds } from '../network/structure';
 import type {
   Architecture,
   ArchitectureComponent,
@@ -7,6 +9,7 @@ import type {
 
 const entryKinds = new Set<ComponentKind>([
   'internet',
+  'external-network',
   'internet-gateway',
   'virtual-private-gateway',
   'dns',
@@ -45,6 +48,12 @@ const globallyDistributedKinds = new Set<ComponentKind>([
 ]);
 
 export function isEntryComponent(component: ArchitectureComponent): boolean {
+  if (
+    attachmentOnlyKinds.has(component.kind) ||
+    (component.network?.virtualNetworkId &&
+      ['internet-gateway', 'virtual-private-gateway'].includes(component.kind))
+  )
+    return false;
   if (entryKinds.has(component.kind)) {
     return true;
   }
@@ -109,6 +118,13 @@ export function isComponentRedundant(
   }
 
   switch (component.kind) {
+    case 'nat-gateway':
+    case 'subnet':
+      return false;
+    case 'private-endpoint':
+      return component.availabilityZones.length >= 2;
+    case 'vpn-connection':
+      return component.configuration.tunnels >= 2;
     case 'sql-database':
       return (
         component.configuration.multiAZ &&
@@ -124,6 +140,9 @@ export function isComponentRedundant(
       );
     case 'load-balancer':
       return component.availabilityZones.length >= 2;
+    case 'virtual-network':
+    case 'security-group':
+    case 'external-network':
     case 'internet-gateway':
     case 'virtual-private-gateway':
     case 'serverless-function':
@@ -201,7 +220,10 @@ export function isComponentRedundantInArchitecture(
   );
 }
 
-export function architectureEntryIds(architecture: Architecture): string[] {
+export function architectureEntryIds(
+  architecture: Architecture,
+  failed: ReadonlySet<string> = new Set(),
+): string[] {
   const incomingCounts = new Map(
     architecture.components.map((component) => [component.id, 0]),
   );
@@ -219,6 +241,7 @@ export function architectureEntryIds(architecture: Architecture): string[] {
     .filter(
       (component) =>
         isEntryComponent(component) &&
+        hasModeledIngress(architecture, component, failed) &&
         (incomingCounts.get(component.id) ?? 0) === 0,
     )
     .map((component) => component.id);
@@ -239,7 +262,8 @@ export function reachableComponentIds(
   for (const connection of architecture.connections) {
     if (
       componentIds.has(connection.source) &&
-      componentIds.has(connection.target)
+      componentIds.has(connection.target) &&
+      connectionNetworkPath(architecture, connection, failedIds).reachable
     ) {
       const targets = adjacency.get(connection.source) ?? [];
       targets.push(connection.target);

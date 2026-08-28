@@ -1,3 +1,4 @@
+import { withEffectiveZones } from '../network/structure';
 import { getCatalogEntry } from '../catalog';
 import type { Architecture, ArchitectureComponent } from '../model';
 import { createFinding } from './finding';
@@ -28,6 +29,14 @@ function componentMultipliers(
   const multipliers: CostMultiplier[] = [];
 
   switch (component.kind) {
+    case 'private-endpoint':
+      addMultiplier(
+        multipliers,
+        'ENDPOINT_ZONES',
+        `${Math.max(1, component.availabilityZones.length)} endpoint zones`,
+        Math.max(1, component.availabilityZones.length),
+      );
+      break;
     case 'virtual-machine': {
       const knownSizes: Record<string, number> = {
         't3.small': 0.7,
@@ -199,8 +208,14 @@ function estimateComponentCost(
     (product, multiplier) => product * multiplier.value,
     1,
   );
+  const usageCost =
+    component.kind === 'nat-gateway'
+      ? component.configuration.monthlyDataGb * 0.05
+      : component.kind === 'private-endpoint'
+        ? component.configuration.monthlyDataGb * 0.01
+        : 0;
   const estimatedMonthlyCost = roundMoney(
-    catalog.baseMonthlyEstimate * multiplierProduct,
+    catalog.baseMonthlyEstimate * multiplierProduct + usageCost,
   );
 
   return {
@@ -211,20 +226,24 @@ function estimateComponentCost(
     multipliers,
     estimatedMonthlyCost,
     explanation:
-      component.kind === 'internet-gateway'
-        ? 'Gateway resource only: $0/month in this planning model. Traffic charges are excluded.'
-        : component.kind === 'virtual-private-gateway'
-          ? 'Gateway resource only: $0/month in this planning model. VPN connections, dedicated links, and traffic charges are excluded.'
-          : multipliers.length === 0
-            ? `Catalog baseline of $${catalog.baseMonthlyEstimate}/month.`
-            : `Catalog baseline adjusted by ${multipliers.map((item) => item.label).join(', ')}.`,
+      component.kind === 'nat-gateway' || component.kind === 'private-endpoint'
+        ? `Planning baseline $${catalog.baseMonthlyEstimate} × ${multiplierProduct} plus $${roundMoney(usageCost)} for ${component.configuration.monthlyDataGb} GB of modeled processing. Transfer and regional prices excluded.`
+        : component.kind === 'internet-gateway'
+          ? 'Gateway resource only: $0/month in this planning model. Traffic charges are excluded.'
+          : component.kind === 'virtual-private-gateway'
+            ? 'Gateway resource only: $0/month in this planning model. VPN connections, dedicated links, and traffic charges are excluded.'
+            : multipliers.length === 0
+              ? `Catalog baseline of $${catalog.baseMonthlyEstimate}/month.`
+              : `Catalog baseline adjusted by ${multipliers.map((item) => item.label).join(', ')}.`,
   };
 }
 
 export function estimateArchitectureCost(
   architecture: Architecture,
 ): CostEstimate {
-  const components = architecture.components.map(estimateComponentCost);
+  const components = withEffectiveZones(architecture).components.map(
+    estimateComponentCost,
+  );
   const totalEstimatedMonthlyCost = roundMoney(
     components.reduce(
       (total, component) => total + component.estimatedMonthlyCost,
@@ -241,7 +260,7 @@ export function estimateArchitectureCost(
     assumptions: [
       'Catalog baselines represent simplified planning values, not provider price-sheet calculations.',
       'Replica, capacity tier, Multi-AZ, and selected service settings use explicit deterministic multipliers.',
-      'Request volume, data transfer, discounts, taxes, support plans, and regional price variation are excluded.',
+      'NAT processing uses $0.05/GB and private endpoint processing $0.01/GB as illustrative planning assumptions. VPN baseline covers one connection with up to two tunnels. Request volume, other data transfer, discounts, taxes and regional price variation are excluded.',
     ],
     disclaimer:
       'Estimated architecture cost is a planning model and is not a cloud billing quote.',

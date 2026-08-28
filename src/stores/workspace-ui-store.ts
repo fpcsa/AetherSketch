@@ -31,7 +31,7 @@ export type WorkspaceUiState = {
 
 export const useWorkspaceUiStore = create<WorkspaceUiState>((set) => ({
   activePaletteCategory: 'network',
-  catalogDescriptionMode: 'aws',
+  catalogDescriptionMode: 'generic',
   selectedComponentId: null,
   selectedConnectionId: null,
   activePanel: 'inspector',

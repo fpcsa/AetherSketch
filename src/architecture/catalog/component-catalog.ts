@@ -34,6 +34,149 @@ export type ComponentCatalog = {
 };
 
 export const componentCatalog = {
+  'virtual-network': {
+    kind: 'virtual-network',
+    displayName: 'Virtual Network',
+    category: 'network',
+    description:
+      'Network boundary with IPv4 address space and resource membership.',
+    aws: { service: 'amazon-vpc', displayName: 'Amazon VPC' },
+    defaultConfiguration: { cidr: '10.0.0.0/16' },
+    baseMonthlyEstimate: 0,
+    defaultSize: { width: 216, height: 104 },
+    defaultReplicas: 1,
+    defaultAvailabilityZoneCount: 0,
+    supportedProperties: ['cidr', 'network', 'critical', 'position'],
+  },
+  subnet: {
+    kind: 'subnet',
+    displayName: 'Subnet',
+    category: 'network',
+    description:
+      'Zonal network boundary with public/private intent and explicit routes.',
+    aws: { service: 'vpc-subnet', displayName: 'Amazon VPC Subnet' },
+    defaultConfiguration: {
+      cidr: '10.0.1.0/24',
+      visibility: 'private',
+      routes: [],
+    },
+    baseMonthlyEstimate: 0,
+    defaultSize: { width: 216, height: 104 },
+    defaultReplicas: 1,
+    defaultAvailabilityZoneCount: 1,
+    supportedProperties: [
+      'cidr',
+      'visibility',
+      'routes',
+      'network',
+      'critical',
+      'position',
+    ],
+  },
+  'nat-gateway': {
+    kind: 'nat-gateway',
+    displayName: 'NAT Gateway',
+    category: 'network',
+    description:
+      'Zonal outbound internet gateway. Place in a public subnet with an Internet Gateway route.',
+    aws: { service: 'nat-gateway', displayName: 'AWS NAT Gateway' },
+    defaultConfiguration: { monthlyDataGb: 0 },
+    baseMonthlyEstimate: 35,
+    defaultSize: { width: 216, height: 104 },
+    defaultReplicas: 1,
+    defaultAvailabilityZoneCount: 1,
+    supportedProperties: ['monthlyDataGb', 'network', 'critical', 'position'],
+  },
+  'security-group': {
+    kind: 'security-group',
+    displayName: 'Network Security Rules',
+    category: 'network',
+    description:
+      'Attached stateful allow rules for initiated connections. Empty ingress denies inbound traffic.',
+    aws: {
+      service: 'security-group',
+      displayName: 'Amazon VPC Security Group',
+    },
+    defaultConfiguration: {
+      ingress: [],
+      egress: [{ peerId: '*', protocol: '*' }],
+    },
+    baseMonthlyEstimate: 0,
+    defaultSize: { width: 216, height: 104 },
+    defaultReplicas: 1,
+    defaultAvailabilityZoneCount: 0,
+    supportedProperties: [
+      'ingress',
+      'egress',
+      'network',
+      'critical',
+      'position',
+    ],
+  },
+  'private-endpoint': {
+    kind: 'private-endpoint',
+    displayName: 'Private Service Endpoint',
+    category: 'network',
+    description:
+      'Private access to one managed service, with placement and security rules.',
+    aws: {
+      service: 'vpc-interface-endpoint',
+      displayName: 'AWS PrivateLink Interface Endpoint',
+    },
+    defaultConfiguration: { serviceId: '', monthlyDataGb: 0 },
+    baseMonthlyEstimate: 8,
+    defaultSize: { width: 216, height: 104 },
+    defaultReplicas: 1,
+    defaultAvailabilityZoneCount: 1,
+    supportedProperties: [
+      'serviceId',
+      'monthlyDataGb',
+      'network',
+      'critical',
+      'position',
+    ],
+  },
+  'external-network': {
+    kind: 'external-network',
+    displayName: 'External Network',
+    category: 'network',
+    description:
+      'Office, data center, or remote network connected through a VPN.',
+    aws: { service: 'customer-network', displayName: 'On-premises Network' },
+    defaultConfiguration: { cidr: '172.16.0.0/16' },
+    baseMonthlyEstimate: 0,
+    defaultSize: { width: 216, height: 104 },
+    defaultReplicas: 1,
+    defaultAvailabilityZoneCount: 0,
+    supportedProperties: ['cidr', 'network', 'critical', 'position'],
+  },
+  'vpn-connection': {
+    kind: 'vpn-connection',
+    displayName: 'VPN Connection',
+    category: 'network',
+    description:
+      'Encrypted connection between an external network and a Virtual Private Gateway.',
+    aws: { service: 'site-to-site-vpn', displayName: 'AWS Site-to-Site VPN' },
+    defaultConfiguration: {
+      gatewayId: '',
+      externalNetworkId: '',
+      tunnels: 2,
+      encrypted: true,
+    },
+    baseMonthlyEstimate: 36.5,
+    defaultSize: { width: 216, height: 104 },
+    defaultReplicas: 1,
+    defaultAvailabilityZoneCount: 0,
+    supportedProperties: [
+      'gatewayId',
+      'externalNetworkId',
+      'tunnels',
+      'encrypted',
+      'network',
+      'critical',
+      'position',
+    ],
+  },
   internet: {
     kind: 'internet',
     displayName: 'Internet',
@@ -520,6 +663,7 @@ export function createComponentFromCatalog(
     critical: input.critical ?? false,
     position: input.position ?? { x: 80, y: 80 },
     metadata: input.metadata ?? {},
+    ...(input.network ? { network: input.network } : {}),
   };
 
   return architectureComponentSchema.parse(component);

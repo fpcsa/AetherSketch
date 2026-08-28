@@ -1,3 +1,10 @@
+import { networkLayout } from '../../architecture/network/layout';
+import {
+  attachmentOnlyKinds,
+  boundaryKinds,
+  componentSubnets,
+  effectiveZones,
+} from '../../architecture/network/structure';
 import {
   Background,
   BackgroundVariant,
@@ -117,10 +124,16 @@ function ArchitectureCanvasInner() {
     setNodes: setFlowNodes,
   } = useReactFlow<ArchitectureFlowNode, ArchitectureFlowEdge>();
   const draggingRef = useRef(false);
+  const appliedFocusRequestRef = useRef(0);
 
-  const projectedNodes = useMemo<ArchitectureFlowNode[]>(
-    () =>
-      architecture.components.map((component) => {
+  const projectedNodes = useMemo<ArchitectureFlowNode[]>(() => {
+    const layout = networkLayout(architecture);
+    return [...architecture.components]
+      .sort(
+        (a, b) =>
+          Number(boundaryKinds.has(b.kind)) - Number(boundaryKinds.has(a.kind)),
+      )
+      .map((component) => {
         const failed = simulation?.failedComponentIds.includes(component.id);
         const degraded = simulation?.degradedComponentIds.includes(
           component.id,
@@ -130,11 +143,34 @@ function ArchitectureCanvasInner() {
         return {
           id: component.id,
           type: 'architecture-component',
-          position: component.position,
+          position: boundaryKinds.has(component.kind)
+            ? { x: layout.get(component.id)!.x, y: layout.get(component.id)!.y }
+            : component.position,
+          style: boundaryKinds.has(component.kind)
+            ? {
+                width: layout.get(component.id)!.width,
+                height: layout.get(component.id)!.height,
+              }
+            : undefined,
+          zIndex:
+            component.kind === 'virtual-network'
+              ? -20
+              : component.kind === 'subnet'
+                ? -10
+                : 0,
+          draggable: !boundaryKinds.has(component.kind),
+          connectable: !attachmentOnlyKinds.has(component.kind),
           selected: component.id === selectedComponentId,
           deletable: !component.locked,
           data: {
-            component,
+            component: {
+              ...component,
+              availabilityZones: effectiveZones(architecture, component),
+            },
+            boundary: boundaryKinds.has(component.kind),
+            membershipNames: componentSubnets(architecture, component).map(
+              (subnet) => subnet.name,
+            ),
             simulationState: failed
               ? 'failed'
               : degraded
@@ -143,9 +179,8 @@ function ArchitectureCanvasInner() {
           },
           ariaLabel: `${component.name}, ${visual.label} component`,
         };
-      }),
-    [architecture.components, selectedComponentId, simulation],
-  );
+      });
+  }, [architecture, selectedComponentId, simulation]);
   const [initialNodes] = useState(projectedNodes);
 
   useEffect(() => {
@@ -212,14 +247,20 @@ function ArchitectureCanvasInner() {
   );
 
   useEffect(() => {
-    if (!nodesInitialized || !selectedComponentId || focusRequest === 0) {
+    if (
+      !nodesInitialized ||
+      !selectedComponentId ||
+      focusRequest === 0 ||
+      focusRequest === appliedFocusRequestRef.current
+    ) {
       return;
     }
     const node = getNode(selectedComponentId);
     if (node) {
+      appliedFocusRequestRef.current = focusRequest;
       void fitView({
         nodes: [node],
-        padding: 1.8,
+        padding: 0.35,
         duration: 400,
         maxZoom: 1.15,
       });
@@ -456,6 +497,7 @@ function ArchitectureCanvasInner() {
           fitViewOptions={initialFitViewOptions}
           minZoom={0.25}
           maxZoom={1.8}
+          elevateNodesOnSelect={false}
           snapToGrid
           snapGrid={snapGrid}
           proOptions={{ hideAttribution: true }}

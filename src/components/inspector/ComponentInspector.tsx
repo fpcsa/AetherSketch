@@ -1,4 +1,9 @@
-import { LockKeyhole, Trash2, UnlockKeyhole } from 'lucide-react';
+import { NetworkInspector } from './NetworkInspector';
+import {
+  effectiveZones,
+  subnetKinds,
+} from '../../architecture/network/structure';
+import { Focus, LockKeyhole, Trash2, UnlockKeyhole } from 'lucide-react';
 
 import { getCatalogEntry } from '../../architecture/catalog';
 import type {
@@ -15,6 +20,7 @@ const configurationOptions: Partial<
   Record<ComponentKind, Record<string, readonly string[]>>
 > = {
   internet: { entryType: ['public-internet'] },
+  subnet: { visibility: ['public', 'private'] },
   dns: {
     routingPolicy: ['simple', 'latency', 'failover'],
     zoneType: ['public', 'private'],
@@ -57,6 +63,8 @@ const inputClass =
 
 function formatPropertyName(name: string): string {
   if (name === 'asn') return 'Private ASN';
+  if (name === 'cidr') return 'IPv4 CIDR';
+  if (name === 'monthlyDataGb') return 'Monthly processed data (GB)';
   return name
     .replace(/([a-z])([A-Z])/g, '$1 $2')
     .replace(/^./, (character) => character.toUpperCase());
@@ -67,6 +75,9 @@ type ComponentInspectorProps = {
 };
 
 export function ComponentInspector({ component }: ComponentInspectorProps) {
+  const architecture = useArchitectureStore((state) => state.architecture);
+  const assignedSubnets = Boolean(component.network?.subnetIds?.length);
+  const zones = effectiveZones(architecture, component);
   const updateComponent = useArchitectureStore(
     (state) => state.updateComponent,
   );
@@ -128,6 +139,17 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
         </div>
       </div>
 
+      <button
+        type="button"
+        onClick={() =>
+          useWorkspaceUiStore.getState().focusComponent(component.id)
+        }
+        className="mx-3 mt-3 flex min-h-8 items-center justify-center gap-2 border border-slate-700 px-3 text-[12px] text-cyan-300"
+      >
+        <Focus className="size-3.5" aria-hidden="true" />
+        Focus on canvas
+      </button>
+
       <fieldset disabled={component.locked} className="space-y-3 px-3 py-3">
         <legend className="sr-only">Component properties</legend>
 
@@ -164,9 +186,15 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
         <label className="block text-[11px] font-medium uppercase tracking-[0.1em] text-slate-600">
           Availability zones
           <input
-            key={`${component.id}:az:${component.availabilityZones.join(',')}`}
+            key={`${component.id}:az:${zones.join(',')}`}
             className={inputClass}
-            defaultValue={component.availabilityZones.join(', ')}
+            defaultValue={zones.join(', ')}
+            disabled={assignedSubnets}
+            title={
+              assignedSubnets
+                ? 'Availability zones are derived from assigned subnets.'
+                : undefined
+            }
             placeholder="eu-west-1a, eu-west-1b"
             onBlur={(event) => {
               const zones = event.currentTarget.value
@@ -200,6 +228,19 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
           </label>
         ) : null}
 
+        {subnetKinds.has(component.kind) ||
+        [
+          'virtual-network',
+          'subnet',
+          'security-group',
+          'internet-gateway',
+          'virtual-private-gateway',
+          'external-network',
+          'vpn-connection',
+        ].includes(component.kind) ? (
+          <NetworkInspector component={component} commit={commit} />
+        ) : null}
+
         <div className="border-t border-slate-800/70 pt-3">
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.11em] text-slate-600">
             Service configuration
@@ -207,17 +248,23 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
           <div className="space-y-2.5">
             {component.kind === 'internet-gateway' ? (
               <p className="text-[12px] leading-5 text-slate-500">
-                Model internet routing with connections. This gateway has no
-                additional service settings; traffic charges are excluded.
+                Attach this gateway to a virtual network, then add an internet
+                route to a public subnet. Traffic charges are excluded.
               </p>
             ) : null}
             {component.kind === 'virtual-private-gateway' ? (
               <p className="text-[12px] leading-5 text-slate-500">
                 Private ASN: 64512–65534 or 4200000000–4294967294. VPN
-                connections, dedicated links, and traffic charges are excluded.
+                connections are modeled separately; dedicated links and transfer
+                charges are excluded.
               </p>
             ) : null}
             {Object.entries(component.configuration).map(([key, value]) => {
+              if (
+                Array.isArray(value) ||
+                ['serviceId', 'gatewayId', 'externalNetworkId'].includes(key)
+              )
+                return null;
               const label = formatPropertyName(key);
               const options = configurationOptions[component.kind]?.[key];
 
