@@ -1,215 +1,193 @@
 # AetherSketch — Architecture Copilot
 
-> The architecture canvas built for humans and agents.
+**The architecture canvas built for humans and agents.**
 
-AetherSketch is a visual cloud-architecture workspace designed for a human and an AI agent to inspect and eventually modify the same deterministic architecture state. Humans provide intent, constraints, and judgment; agents provide reasoning and execution; AetherSketch provides the shared canvas, deterministic state, and structured tools.
+AetherSketch gives a human and a browser agent one shared cloud architecture to inspect, improve, and challenge. The human supplies intent and authority; the agent uses typed WebMCP tools; the canvas shows every accepted change and its modeled consequences.
 
-ChatGPT is the copilot. AetherSketch does **not** embed a chatbot, call an LLM API, or perform backend AI inference.
+The app does not embed a chatbot, call an LLM API, or access cloud accounts. No OpenAI key, AWS key, or database credentials are needed.
 
-## Current status
+## What it does
 
-This repository currently implements the Prompt 7 submission-quality demo milestone:
+Draw a system, set a budget and resilience target, protect important decisions, and ask an agent to improve it. Compare the result with the human-approved starting point, then simulate an availability-zone outage. The same deterministic Architecture IR powers the canvas, tools, analysis, and comparison.
 
-- a compact, desktop-first architecture workspace built on XYFlow;
-- a strongly typed, provider-neutral Architecture IR with an explicit schema version;
-- a catalog for 21 typed provider-neutral component kinds with switchable AWS or Generic service descriptions;
-- semantic connections, human constraints, component locks, and typed domain errors;
-- an actor-aware Zustand store with domain actions, undo/redo, activity history, and localStorage persistence;
-- Ecommerce Production, Serverless API, and Event Processing templates;
-- deterministic validation, cost, resilience, security, constraint, and failure-simulation engines;
-- structured findings with stable IDs, evidence, severity, and remediation guidance;
-- a transient intelligence store that marks analysis stale and clears simulations when architecture state changes;
-- custom typed nodes and semantic edges projected from the Architecture IR;
-- click/drag catalog creation, movement, connections, selection, deletion, zoom, pan, and fit-view controls;
-- typed component and connection inspectors with enforced component locks;
-- editable constraints with deterministic status, interactive findings, and canvas focus;
-- component, availability-zone, and region simulation controls with failed/degraded canvas states;
-- templates, a blank workspace, validated JSON import/export, demo reset, and activity history;
-- a persisted dark/light workspace theme with theme-aware canvas controls, nodes, edges, and panels;
-- live estimated cost, resilience, and security indicators throughout the shell;
-- real imperative WebMCP integration through `document.modelContext` with four compact, read-only architecture tools;
-- explicit Review Mode by default and human-controlled Agent Edit Mode;
-- dynamic, signal-owned registration of exactly five mutation tools while editing is authorized;
-- safe add/update/remove/connect/disconnect adapters with strict schemas, kind validation, automatic placement, and agent activity attribution;
-- defense-in-depth permission checks plus human-only component locks and architecture constraints;
-- an immutable Agent Edit baseline checkpoint plus deterministic Architecture IR comparison with before/after cost and scores, numeric deltas, and added/changed/removed structure;
-- near-real-time human, agent, and system activity presentation, including visibly blocked attempts against locked components;
-- high-contrast failure overlays, textual node and edge impact states, and an explicit operational/degraded/unavailable summary;
-- a one-click canonical demo reset that clears architecture history, simulation, edit authority, activity, and temporary comparison state;
-- copyable three-minute demo prompts that never leave the page or invoke an LLM;
-- graceful invalid-import, invalid-target, unsupported-browser, registration-failure, missing-resource, and corrupted-persistence states;
-- truthful unavailable, initializing, ready, and registration-error lifecycle status plus development-only diagnostics;
-- Cloudflare Workers + static-assets integration with `GET /api/health`;
-- strict TypeScript, ESLint, Prettier, Vitest, and domain/store/component/Worker tests.
+## Why WebMCP
 
-WebMCP starts in **Review Mode** with `get_architecture`, `inspect_component`, `analyze_architecture`, and `simulate_failure`. Agent-triggered analysis and simulation operate through the same stores as the human UI, visibly open their panels and canvas overlays, and append agent-attributed activity. When a human explicitly enables Agent Editing, the application captures the current Architecture IR as the session baseline and registers `add_component`, `update_component`, `remove_component`, `connect_components`, and `disconnect_components` for that authorization window. Disabling editing opens the deterministic before/after comparison while leaving accepted architecture changes intact. The regular human workspace remains fully usable when WebMCP is unavailable.
+Canvas coordinates and DOM selectors do not describe architectural meaning. WebMCP gives the agent stable component IDs, typed configuration, explicit permissions, and recoverable errors. A layout change does not change the tool contract, and both human and agent actions pass through the same domain validation.
+
+A separate chat UI would add another conversation surface and risk a second representation of the architecture. AetherSketch instead works with the user's existing browser agent on the live page. DOM interaction remains useful for human controls and UI testing; semantic graph operations belong in the tools.
+
+## Human + Agent workflow
+
+1. **Review:** ask the agent to inspect and analyze without modifying the graph.
+2. **Constrain:** the human locks PostgreSQL, sets a budget, and chooses a resilience target.
+3. **Authorize:** the human enables Agent Edit Mode. A baseline checkpoint is captured.
+4. **Improve:** the agent edits through five scoped tools; the canvas and activity update immediately.
+5. **Verify:** disable editing, compare before/after metrics and structure, then simulate a failure.
+
+## Features
+
+- Interactive XYFlow canvas, 21 component kinds, AWS/Generic labels, typed inspectors, and semantic connections.
+- Ecommerce, Serverless API, Event Processing, and blank starting points; validated JSON import/export.
+- Deterministic cost, resilience, security, structural findings, and constraint evaluation.
+- Component, availability-zone, and region failure simulations with visible critical-path impact.
+- Review/Edit authority, component locks, agent activity, undo/redo, and session comparison.
+- Canonical demo reset, copyable prompts, dark/light themes, and local persistence with recovery warnings.
+
+## WebMCP tools
+
+| Name                    | Mode          | Purpose                                                        |
+| ----------------------- | ------------- | -------------------------------------------------------------- |
+| `get_architecture`      | Review + Edit | Compact graph, IDs, locks, constraints, and cached metrics     |
+| `inspect_component`     | Review + Edit | Typed configuration, cost, and relationships for one component |
+| `analyze_architecture`  | Review + Edit | Fresh cost, scores, validation, and focused findings           |
+| `simulate_failure`      | Review + Edit | Failure impact and surviving critical paths                    |
+| `add_component`         | Edit only     | Create a validated catalog component with automatic placement  |
+| `update_component`      | Edit only     | Update allowed fields on an unlocked component                 |
+| `remove_component`      | Edit only     | Remove an unlocked component and its incident edges            |
+| `connect_components`    | Edit only     | Connect existing components with a typed edge                  |
+| `disconnect_components` | Edit only     | Remove an existing connection                                  |
+
+Review tools never change Architecture IR. Analysis and simulation update panels and saved activity, so their `readOnlyHint` is false; it is true for get/inspect. All nine responses may contain user/imported labels and carry `untrustedContentHint: true`. See [tool contracts and lifecycle](docs/WEBMCP.md).
+
+## Human authority model
+
+**Review Mode** is the default: only four tools exist. **Agent Edit Mode** adds five mutation tools after registration succeeds. Disabling it revokes execution authority and disposes those registrations; retained callbacks cannot revive in another session.
+
+**Locked components** cannot be updated or removed by an agent. Connections to them can change, allowing an independent replica without altering the protected primary. Only human UI controls can lock/unlock, change constraints, or grant editing.
+
+**Human constraints** such as budget and score targets are soft goals evaluated by analysis. Locks, valid schemas, existing endpoints, and current edit permission are hard invariants. These are application boundaries, not authentication against arbitrary same-origin JavaScript.
 
 ## Architecture
 
-The project separates application composition, presentational components, UI-only state, and Worker code:
-
-```text
-src/
-  architecture/
-    analysis/           Deterministic validation, cost, scoring, constraints
-    catalog/            AWS-first component catalog and creation defaults
-    comparison/         Deterministic session metric and structural IR diff
-    model/              Provider-neutral IR, Zod schemas, errors, factories
-    serialization/      Validated JSON import/export boundary
-    simulation/         Deterministic component, AZ, and region failures
-  app/                  Application composition
-  components/
-    agent/              Truthful WebMCP lifecycle and diagnostics UI
-    analysis/           Interactive score and findings panel
-    canvas/             XYFlow projection, custom nodes, semantic edges
-    inspector/          Typed properties and editable constraints
-    layout/             Top/status bars, notices, activity drawer
-    palette/            Catalog navigation, click/drag component creation
-    simulation/         Failure controls and transient impact summary
-  stores/               Architecture, UI, and transient derived-result state
-  templates/            Validated architecture starting points
-  styles/               Tailwind entry point and workspace styling
-  utils/                Shared runtime schemas
-  webmcp/               Detection, schemas, tools, errors, registration, lifecycle
-worker/                 Cloudflare Worker entry point
-tests/                  Component and Worker tests
-docs/                   Architecture decisions and boundaries
+```mermaid
+flowchart LR
+  Human[Human controls] --> UI[React canvas and panels]
+  Agent[Browser agent] --> MCP[document.modelContext tools]
+  UI --> Store[Validated domain actions]
+  MCP --> Store
+  Store --> IR[Architecture IR]
+  IR --> UI
+  IR --> Engines[Analysis and failure simulation]
+  Engines --> UI
+  Store --> Local[localStorage or session memory]
+  Assets[Cloudflare static assets] --> UI
+  Health[GET /api/health] --> Worker[Cloudflare Worker]
 ```
 
-The provider-neutral Architecture IR lives outside React and XYFlow. The architecture store owns that IR and exposes domain actions; React subscribes to it without mutating raw state. XYFlow keeps transient drag and viewport state, then commits architectural changes through store actions. Analysis and simulation are pure projections of an Architecture snapshot and live in a separate, non-persisted intelligence store. Selection, panel, notice, and palette state remain in a separate UI store; the visual theme is persisted independently and never enters architectural history.
-
-### Deterministic intelligence
-
-`analyzeArchitecture` runs structural validation, a simplified cost model, resilience scoring, security scoring, and explicit constraint evaluation against the same immutable Architecture input. Every finding is machine-readable and deterministic; there are no model calls, network calls, or hidden cloud credentials.
-
-The default Ecommerce Production template currently produces:
-
-- **Estimated architecture cost:** $675/month;
-- **Resilience:** 57/100;
-- **Security:** 76/100;
-- **Validation:** valid, with resilience findings for its single-AZ ECS/RDS critical path and security findings for the missing WAF and secrets manager.
-
-These values are transparent design feedback, not an AWS quote, SLA, penetration test, or prediction. See [docs/ANALYSIS.md](docs/ANALYSIS.md) for exact rules, assumptions, and limitations.
-
-### Architecture IR
-
-An architecture includes its identity, description, provider context, region, schema version, revision, typed components, semantic connections, human constraints, and metadata. Components are a discriminated union keyed by `kind`, so an RDS-style SQL database cannot accidentally receive queue configuration, for example.
-
-Connections describe architectural meaning (`request`, `async`, `data`, `replication`, `trigger`, or `management`) rather than only visual lines. Zod validation rejects duplicate IDs, dangling endpoints, self-connections, malformed component configuration, and unsupported schema versions.
-
-### Store API
-
-`useArchitectureStore` exposes these domain actions:
-
-- project lifecycle: `createArchitecture`, `loadArchitecture`, `renameArchitecture`, `resetArchitecture`, `resetDemo`;
-- components: `addComponent`, `updateComponent`, `removeComponent`, `moveComponent`, `lockComponent`, `unlockComponent`;
-- connections and constraints: `connectComponents`, `updateConnection`, `disconnectComponents`, `setConstraints`;
-- history: `undo`, `redo`.
-
-`recordActivity` records non-mutating tool outcomes without creating an architecture revision or undo snapshot.
-
-Every mutation accepts `human`, `agent`, or `system` actor attribution and records a structured activity entry. Locked components may still be inspected or moved, but cannot be configured or removed until explicitly unlocked. Architecture snapshots—not transient UI state—power undo and redo.
-
-### Default Ecommerce IR
-
-```text
-Customer Traffic
-  → Storefront CDN (CloudFront)
-  → Public Application Load Balancer
-  → Storefront API (ECS, one replica in eu-west-1a)
-  → Orders Database (RDS PostgreSQL, single-AZ)
-```
-
-The single-AZ compute and database tiers are intentional weaknesses that make the analysis and failure-simulation panels immediately useful.
-
-### Canonical three-minute demo
-
-The canonical Ecommerce template starts at **$675/month**, **57 resilience**, and **76 security**. The human sets a $3,000 budget and a 90 resilience target, then locks Orders Database before enabling Agent Edit Mode. A tested agent transformation preserves that locked, single-AZ PostgreSQL component while adding independent PostgreSQL failover capacity in another zone, multi-AZ ECS capacity, a WAF, durable queue, and secrets manager.
-
-That target Architecture IR evaluates to **$1,288/month**, **100 resilience**, and **90 security**. Simulating the loss of `eu-west-1a` leaves the modeled critical path reachable and reports the system as **degraded**, not unavailable. The session comparison reports the exact metric deltas and every added, changed, and removed IR entity. See [docs/DEMO.md](docs/DEMO.md) for the complete walkthrough.
-
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the current boundaries and planned extension points.
-
-### WebMCP authority modes
-
-Supported browser environments receive four read tools registered with the current imperative `document.modelContext.registerTool` API. Every descriptor has a strict JSON Schema, inputs are also validated with Zod, domain failures become structured tool errors, and registration is owned and cleaned up by an `AbortSignal`.
-
-Review Mode is the default and exposes no mutation capability. A human can enable Agent Edit Mode to create a separate five-tool registration group; disabling it revokes permission and aborts only that group's signal, leaving the four read tools and accepted architecture changes intact. Mutation execution checks permission again immediately before using the same validated domain actions as the human UI. Locked components reject agent update/removal, and agents cannot lock, unlock, or change human constraints.
-
-WebMCP is a progressive enhancement: “Ready” means tools are registered on the current page, never that an agent is connected. Unsupported browsers show “Unavailable” while retaining the full human workspace. No extension, MCP server, embedded chatbot, or compatibility API is required by AetherSketch.
-
-See [docs/WEBMCP.md](docs/WEBMCP.md) for exact behavior, lifecycle details, and testing instructions, [SECURITY.md](SECURITY.md) for the threat model, and [evals/webmcp/README.md](evals/webmcp/README.md) for deterministic evals and manual agent evaluation.
+The Worker serves health only. Architecture processing happens in the browser, not on a remote inference or infrastructure backend. [Architecture details](docs/ARCHITECTURE.md).
 
 ## Technology stack
 
-- React and TypeScript
-- Vite with the Cloudflare Vite plugin
-- Cloudflare Workers and static assets
-- Tailwind CSS
-- Zustand
-- Zod
-- `@xyflow/react` for the interactive projection (never used as domain state)
-- lucide-react
-- Vitest and Testing Library
-- `webmcp-types` for the current imperative browser API surface
+React, TypeScript, Vite, XYFlow, Zustand, Zod, Tailwind CSS, and Lucide SVG icons. Cloudflare's Vite plugin and Wrangler build/deploy one Worker with static assets. Vitest and Testing Library cover domain, store, tool, and UI behavior.
+
+There are no cloud-provider SDKs, runtime icon downloads, or external font dependencies.
 
 ## Local development
 
-Requirements:
+Use Node 24 (the verified runtime; minimum 22.12) and npm:
 
-- Node.js 20.19 or newer
-- npm 10 or newer
-
-Install dependencies and start the Cloudflare-backed Vite development environment:
-
-```bash
-npm install
+```sh
+npm ci
 npm run dev
 ```
 
-Vite serves both the React application and Worker routes. Verify the Worker at:
+Open the URL printed by Vite, normally `http://localhost:5173/`. Local development includes the Worker endpoint. No application environment variables exist, so there is intentionally no `.env.example`.
+
+```sh
+npm run format:check
+npm run lint
+npm run typecheck
+npm test
+npm run eval:webmcp
+npm run test:production
+```
+
+`npm test` includes unit/integration tests and ten deterministic WebMCP reference cases. `test:production` builds, starts an isolated Workers preview, checks health/API routing, direct SPA navigation/refresh, asset MIME/cache headers, and closes the server. It is an HTTP smoke test, not a browser e2e or LLM evaluation.
+
+## Testing WebMCP
+
+### ChatGPT in-app browser
+
+Open the app in an in-app browser that exposes WebMCP. Wait for **Ready · Review · 4 tools**, ask for analysis, and verify the panel and Agent activity. Enable editing through the human UI to discover nine tools; disable it to return to four. “Ready” means registration succeeded, not that an agent is connected.
+
+### Chrome WebMCP testing setup
+
+The [current official Chrome instructions](https://developer.chrome.com/docs/ai/webmcp) document `chrome://flags/#enable-webmcp-testing`: enable it, relaunch, and open the app. Browser/version availability varies. The API requires an origin-isolated document and the `tools` permissions policy; production headers retain same-origin tool access. Unsupported browsers still provide the complete human editor.
+
+See [WebMCP testing](docs/WEBMCP.md) and [eval cases and manual model grading](evals/webmcp/README.md). Reference replay is never reported as an LLM success rate.
+
+## WebMCP debugging
+
+The [official DevTools pane](https://developer.chrome.com/docs/devtools/application/webmcp) is **DevTools → Application → WebMCP**. Inspect available/invoked tools, supply arguments, run a tool, and inspect its result or error. The Model Context Tool Inspector is another documented option if that pane is unavailable in your build.
+
+The app's bug-icon diagnostics show mode, registration groups, and the last invocation/result in development. They are excluded from production builds.
+
+## Demo scenario
+
+Use the exact [eleven-step demo script](docs/DEMO.md): reset Ecommerce, analyze in Review Mode, lock PostgreSQL, set **$3,000** and **90 resilience**, request an improvement, then authorize edits. The reference redesign preserves the primary, adds an independent replica and supporting services, and survives loss of `eu-west-1a` with degraded capacity.
+
+| Planning metric          | Reset baseline | Reference redesign |
+| ------------------------ | -------------: | -----------------: |
+| Components / connections |          5 / 4 |              9 / 8 |
+| Monthly cost             |           $675 |             $1,288 |
+| Resilience               |             57 |                100 |
+| Security                 |             76 |                 90 |
+
+## Architecture analysis model
+
+Costs come from catalog baselines and a small set of configuration multipliers. They omit usage volume, traffic, regional price sheets, discounts, and taxes. **They are planning estimates, not provider quotes.** Scores expose deterministic structural rules, not an SLA, compliance certification, or security scan.
+
+Simulation projects graph reachability and modeled redundancy. It does not predict recovery time, remaining capacity, replication lag, or data loss. [Rules and limitations](docs/ANALYSIS.md).
+
+## Security
+
+Tools use strict schemas, bounded input traversal, kind validation, current permission checks, and domain validation. Imported text stays data and is rendered with React escaping. Notes/metadata and UI/history are omitted from graph tool output; remaining returned names and labels are untrusted.
+
+Architecture, history, and activity live in unencrypted localStorage. If storage becomes unavailable/full, the editor continues in memory and warns the user to export before closing. Invalid imports preserve the current project; analysis and render failures offer recovery. Never enter secrets. Read [SECURITY.md](SECURITY.md) and the [authority model](docs/SECURITY.md).
+
+## Deployment
+
+One Cloudflare Worker serves the SPA assets and `/api/health` from one public origin. The [Cloudflare Vite integration](https://developers.cloudflare.com/workers/vite-plugin/tutorial/) generates the deploy configuration; do not hand-edit `dist/` or deploy only the client directory.
+
+```sh
+npm run build
+npm run preview
+# One-time owner authentication, if not already logged in:
+npx wrangler login
+# Review the Cloudflare account and Worker name, then publish:
+npm run deploy
+```
+
+`npm run deploy` rebuilds and publishes the Worker and assets together. No application secrets or database bindings are required; the repository owner needs Cloudflare deployment authorization. Build-only validation is available with `npx wrangler deploy --dry-run` after a build.
+
+SPA fallback serves direct page navigation and refresh. `/api` and `/api/*` run the Worker first, so unknown APIs return JSON 404s rather than the SPA. Hashed assets receive immutable caching; the favicon is bundled locally.
+
+After deployment, open the URL printed by Wrangler, refresh a nested page, and confirm `GET /api/health` returns `{"status":"ok","service":"aethersketch"}`. See [deployment and release checks](docs/DEPLOYMENT.md). A public URL must be verified before claiming a live deployment.
+
+## Repository structure
 
 ```text
-GET http://localhost:5173/api/health
+src/architecture/   IR, catalog, validation, analysis, comparison, simulation
+src/components/     Canvas, inspectors, panels, controls, recovery UI
+src/stores/         Architecture/history, intelligence, theme, UI state
+src/webmcp/         Tool schemas, outputs, authority, registration lifecycle
+src/templates/      Canonical demo and alternative starting architectures
+worker/             Health endpoint
+public/             Favicon and production asset headers
+scripts/            Production HTTP smoke test
+tests/              Unit and integration coverage
+evals/webmcp/       Ten deterministic cases and manual LLM evaluation guide
+docs/               Architecture, tools, security, demo, analysis, deployment
 ```
 
-Expected response:
+## Limitations
 
-```json
-{
-  "status": "ok",
-  "service": "aethersketch"
-}
-```
+Desktop workspace (minimum 1000×640); dense graphs need zoom and sidebar scrolling. State is local to one browser origin; no collaboration or cross-device sync. Large graph outputs can exceed advisory agent context budgets. WebMCP remains an evolving browser API. No real infrastructure is deployed or managed by the product.
 
-## Quality commands
+## Roadmap
 
-```bash
-npm run build
-npm run typecheck
-npm run lint
-npm run test
-npm run format:check
-```
-
-`npm run preview` builds and serves the production output in the Workers runtime. `npm run deploy` builds and deploys the Worker and static assets together with Wrangler; Cloudflare account authorization is required only for deployment.
-
-## Cloudflare configuration
-
-[`wrangler.jsonc`](wrangler.jsonc) points at [`worker/index.ts`](worker/index.ts), enables SPA asset fallback, and routes `/api/*` through the Worker. The Cloudflare Vite plugin uses the same configuration during development, build, preview, and deployment. No secrets, database, authentication, or environment variables are required.
-
-## Product boundaries
-
-AetherSketch currently has:
-
-- no OpenAI or Anthropic API dependency;
-- no embedded assistant or chat surface;
-- no authentication or database;
-- no cloud credentials or infrastructure deployment capability;
-- no production `document.modelContext` polyfill, compatibility shim, or mock registration;
-- no MCP server or browser-extension dependency;
-- no LLM, probabilistic inference, or opaque scoring inside the architecture engines.
+Potential follow-ups include richer provider pricing assumptions, stronger capacity modeling, accessible keyboard graph editing, and real model-evaluation runs across supported browsers. These are not implemented features or promises of current behavior.
 
 ## License
 
-AetherSketch is licensed under the existing [GNU Affero General Public License v3.0 or later](LICENSE).
+[GNU Affero General Public License v3.0 or later](LICENSE), SPDX `AGPL-3.0-or-later`. The repository's established open-source license is preserved.

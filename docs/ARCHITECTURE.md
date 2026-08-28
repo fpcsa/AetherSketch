@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document describes the provider-neutral Architecture IR, deterministic intelligence layer, submission-quality visual workspace, WebMCP authority boundary, and Prompt 7 agent-session comparison.
+This document describes the provider-neutral Architecture IR, deterministic intelligence layer, visual workspace, WebMCP authority boundary, session comparison, and production deployment/recovery paths.
 
 ## Runtime shape
 
@@ -15,7 +15,7 @@ Browser agent ───────> document.modelContext ─────> WebM
                                                     └─> shared stores/domain actions
 ```
 
-The Cloudflare Vite plugin runs the React client and Worker together in development and produces their deployable output together at build time. SPA fallback is configured through Wrangler while `/api/*` is explicitly routed to the Worker.
+The Cloudflare Vite plugin runs the React client and Worker together in development and produces their deployable output together at build time. SPA fallback is configured through Wrangler while `/api` and `/api/*` are explicitly routed to the Worker. The generated deployment configuration points at the built Worker and client assets; no separate Pages deployment or API service is required. See [DEPLOYMENT.md](DEPLOYMENT.md) for production routing and smoke checks.
 
 ## Frontend boundaries
 
@@ -56,9 +56,9 @@ The AI palette category contains provider-neutral `serverless-ai` and `ai-agent`
 
 The right workspace panel switches between typed inspection, analysis, and simulation. Component configuration fields are generated from the discriminated IR configuration, while known enum properties use bounded selectors. Locked components disable architectural fields and deletion until explicitly unlocked. Connections have a dedicated inspector for type, protocol, encryption, and criticality.
 
-Constraints remain human-authored IR data. Their UI presents stale state after edits and explicit deterministic results after analysis. Findings can select and focus affected nodes or edges. Failure simulation remains a transient overlay and never writes to project persistence or history. Failed and degraded nodes receive both icon/text overlays and semantic state, impacted edges are labeled as failed paths or reduced capacity, and a canvas-level headline makes operational status readable in a recorded demo.
+Constraints remain human-authored IR data. Their UI presents stale state after edits and explicit deterministic results after analysis. Findings can select and focus affected nodes or edges. Failure simulation remains a transient overlay and never changes Architecture IR or undo history. Agent runs append saved activity separately. Failed and degraded nodes receive both icon/text overlays and semantic state, impacted edges are labeled as failed paths or reduced capacity, and a canvas-level headline makes operational status readable in a recorded demo.
 
-The top bar owns template/reset, validated JSON import/export, undo/redo, activity history, copyable demo prompts, and the persisted dark/light theme toggle. **Reset Demo** restores the canonical Ecommerce template and clears history, activity, simulation, Agent Edit authorization, selection, and the temporary comparison checkpoint. Invalid imports are rejected before `loadArchitecture`, preserving the current project. A canvas-local error boundary also keeps the surrounding workspace and saved Architecture IR available if a third-party graph renderer fails.
+The top bar owns template/reset, validated JSON import/export, undo/redo, activity history, copyable demo prompts, and the persisted dark/light theme toggle. **Reset Demo** restores the canonical Ecommerce template and clears history, activity, simulation, Agent Edit authorization, selection, and the temporary comparison checkpoint. Invalid imports are rejected before `loadArchitecture`, preserving the current project. Import success and follow-up analysis failure are reported separately, so a committed import is never described as unchanged. Canvas and root render boundaries offer a retry without resetting the model; event-handler failures are reported through the workspace notice because React boundaries do not catch them.
 
 ## Agent-session comparison
 
@@ -82,13 +82,15 @@ See [`ANALYSIS.md`](ANALYSIS.md) for the rule model and limitations.
 
 The Zustand architecture store exposes domain-oriented actions instead of encouraging UI components to patch state. Mutations validate a complete candidate IR before commit, increment its revision, capture the prior Architecture snapshot, clear the redo branch, and append an actor-aware activity record.
 
-Locked components reject configuration changes and removal through `COMPONENT_LOCKED`. Lock and unlock actions are intentionally human-only at the WebMCP boundary. Position changes use a dedicated human action and remain allowed. Removing an unlocked component also removes its connected semantic edges so the IR cannot become dangling.
+Locked components reject configuration changes and removal through `COMPONENT_LOCKED`. Lock and unlock actions are human-only in both WebMCP and agent-attributed domain actions. Position changes use a dedicated human action and remain allowed. Removing an unlocked component also removes its connected semantic edges so the IR cannot become dangling.
 
 Undo and redo operate only on Architecture snapshots. Activity records remain an append-only audit view during ordinary work, while transient UI and intelligence state live in separate stores. Canonical Reset Demo intentionally clears the audit view and both history branches for repeatable judging sessions.
 
 ## Persistence
 
-The store persists the current architecture, activity, and bounded undo/redo snapshots under the versioned key `aethersketch.architecture.v1`. Persistence uses browser localStorage when available and an in-memory fallback when storage access is unavailable. Rehydrated data is schema validated; invalid persisted state falls back safely to the Ecommerce template and produces a visible recovery notice. Agent-session comparison and simulations are intentionally not persisted.
+The store persists the current architecture, activity, and bounded undo/redo snapshots under the versioned key `aethersketch.architecture.v1`. Persistence uses browser localStorage when available. A blocked getter or failed write switches that store to session memory with a persistent export warning. Synchronous quota errors and asynchronous storage rejection cannot turn an already committed domain action into a failed tool result. The last successfully saved snapshot is retained; memory-only changes require export before reload/close. Rehydrated data is schema validated; invalid persisted state falls back safely to the Ecommerce template and produces a visible recovery notice. Agent-session comparison and simulations are intentionally not persisted.
+
+Initial analysis failure leaves the workspace usable with unavailable metrics and a retry message. A later analysis failure preserves the previous result but marks it stale. A failed simulation clears the prior overlay instead of showing it as the new requested scenario. These failures never alter Architecture IR.
 
 No remote database or Cloudflare D1 binding is used.
 
@@ -110,9 +112,9 @@ The mutation descriptors accept only safe domain fields. Kind-specific configura
 
 Feature detection requires a callable `document.modelContext.registerTool`. Supported pages progress from Initializing to Ready only after all read registration promises resolve. One long-lived `AbortController` owns the read group. Each enable cycle creates a second controller for the mutation group; disabling first revokes permission and then aborts that signal, so read registrations survive and edit registrations cannot leak or duplicate. Unsupported browsers continue as complete human workspaces. Status never equates API readiness with agent connectivity.
 
-Mutation execution checks Edit Mode both before schema parsing and immediately before the synchronous store action. That second check closes the cached-reference and in-flight-disable race. Hard IR invariants and locks fail closed, while human budget/resilience/security/region/Multi-AZ/encryption constraints remain visible soft goals evaluated after multi-step changes.
+Mutation execution checks Edit Mode both before schema parsing and immediately before the synchronous store action. Registration-scoped wrappers reject disposed callbacks permanently, and the domain store independently requires completed read/edit registration plus current authorization. Hard IR invariants and locks fail closed, while human budget/resilience/security/region/Multi-AZ/encryption constraints remain visible soft goals evaluated after multi-step changes.
 
-The read tools are annotated read-only; mutation tools explicitly are not. Analysis and simulation update only transient intelligence/presentation state and never mutate Architecture IR or history. See [`WEBMCP.md`](WEBMCP.md) for schemas, outputs, lifecycle, structured errors, testing, and current draft/type-package differences, and [`SECURITY.md`](SECURITY.md) for the authority model.
+Only `get_architecture` and `inspect_component` carry `readOnlyHint: true`. Analysis/simulation carry false because they update presentation and saved activity; all nine tools mark potentially imported returned text with `untrustedContentHint: true`. See [`WEBMCP.md`](WEBMCP.md) for schemas, outputs, lifecycle, structured errors, testing, and current draft/type-package differences, and [`SECURITY.md`](SECURITY.md) for the authority model.
 
 ## Dependency rationale
 

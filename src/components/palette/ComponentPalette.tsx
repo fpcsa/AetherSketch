@@ -16,6 +16,7 @@ import { useArchitectureStore } from '../../stores/architecture-store';
 import type { CatalogDescriptionMode } from '../../stores/workspace-ui-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
 import { COMPONENT_DRAG_TYPE } from '../canvas/ArchitectureCanvas';
+import { runWorkspaceAction } from '../layout/workspace-actions';
 import {
   paletteCategories,
   type PaletteCategoryId,
@@ -57,15 +58,17 @@ export function ComponentPalette() {
     .filter((entry) => entry.category === activeCategory);
 
   const addCatalogComponent = (kind: ComponentKind) => {
-    const component = addComponent({
-      kind,
-      position: {
-        x: 96 + (componentCount % 4) * 224,
-        y: 96 + Math.floor(componentCount / 4) * 144,
-      },
-    });
-    selectComponent(component.id);
-    setActivePanel('inspector');
+    runWorkspaceAction(() => {
+      const component = addComponent({
+        kind,
+        position: {
+          x: 96 + (componentCount % 4) * 224,
+          y: 96 + Math.floor(componentCount / 4) * 144,
+        },
+      });
+      selectComponent(component.id);
+      setActivePanel('inspector');
+    }, 'The component could not be added. Your architecture remains available.');
   };
 
   return (

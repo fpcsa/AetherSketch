@@ -4,6 +4,7 @@ import {
   persist,
   type PersistStorage,
   type StateStorage,
+  type StorageValue,
 } from 'zustand/middleware';
 
 import { createComponentFromCatalog } from '../architecture/catalog';
@@ -60,6 +61,7 @@ export type RecordActivityInput = Pick<
 
 export type ArchitectureStore = PersistedArchitectureState & {
   persistenceRecoveryNotice: string | null;
+  persistenceUnavailable: boolean;
   createArchitecture: (
     input: CreateArchitectureInput,
     actor?: Actor,
@@ -116,31 +118,19 @@ type ArchitectureStoreOptions = {
   skipHydration?: boolean;
 };
 
-const fallbackStorageValues = new Map<string, string>();
-
-const fallbackStorage: StateStorage = {
-  getItem: (name) => fallbackStorageValues.get(name) ?? null,
-  setItem: (name, value) => {
-    fallbackStorageValues.set(name, value);
-  },
-  removeItem: (name) => {
-    fallbackStorageValues.delete(name);
-  },
-};
-
-function getSafeStateStorage(): StateStorage {
+function getSafeStateStorage(
+  onUnavailable: () => void,
+): StateStorage | undefined {
   if (typeof window === 'undefined') {
-    return fallbackStorage;
+    onUnavailable();
+    return undefined;
   }
 
   try {
-    const storage = window.localStorage;
-    const probeKey = `${ARCHITECTURE_STORAGE_KEY}.probe`;
-    storage.setItem(probeKey, '1');
-    storage.removeItem(probeKey);
-    return storage;
+    return window.localStorage;
   } catch {
-    return fallbackStorage;
+    onUnavailable();
+    return undefined;
   }
 }
 
@@ -275,36 +265,73 @@ export function createArchitectureStore(
     options.initialArchitecture ??
       getArchitectureTemplate(DEFAULT_ARCHITECTURE_TEMPLATE_ID),
   );
+  let persistenceUnavailable = false;
+  let notifyPersistenceUnavailable = () => {};
+  const failPersistence = () => {
+    if (persistenceUnavailable) return;
+    persistenceUnavailable = true;
+    notifyPersistenceUnavailable();
+  };
+  const memoryValues = new Map<
+    string,
+    StorageValue<PersistedArchitectureState>
+  >();
+  const stateStorage = options.storage
+    ? undefined
+    : getSafeStateStorage(failPersistence);
   const storage =
     options.storage ??
-    createJSONStorage<PersistedArchitectureState>(getSafeStateStorage);
+    (stateStorage
+      ? createJSONStorage<PersistedArchitectureState>(() => stateStorage)
+      : undefined);
   let persistenceReadFailed = false;
   const recoverStorageRead = () => {
     persistenceReadFailed = true;
     return null;
   };
-  const recoverableStorage:
-    PersistStorage<PersistedArchitectureState> | undefined = storage
-    ? {
-        ...storage,
-        getItem: (name) => {
-          persistenceReadFailed = false;
-          try {
-            const saved = storage.getItem(name);
-            return saved instanceof Promise
-              ? saved.catch(recoverStorageRead)
-              : saved;
-          } catch {
-            // Let hydration complete and surface recovery without overwriting the saved data.
-            return recoverStorageRead();
-          }
-        },
+  const recoverableStorage: PersistStorage<PersistedArchitectureState> = {
+    getItem: (name) => {
+      if (persistenceUnavailable) return memoryValues.get(name) ?? null;
+      persistenceReadFailed = false;
+      try {
+        const saved = storage?.getItem(name) ?? null;
+        return saved instanceof Promise
+          ? saved.catch(recoverStorageRead)
+          : saved;
+      } catch {
+        // Let hydration complete and surface recovery without overwriting the saved data.
+        return recoverStorageRead();
       }
-    : undefined;
+    },
+    setItem: (name, value) => {
+      memoryValues.set(name, value);
+      if (persistenceUnavailable) return;
+      try {
+        const saved = storage?.setItem(name, value);
+        if (saved instanceof Promise) return saved.catch(failPersistence);
+      } catch {
+        // A quota/policy failure must not turn a committed domain action into an error.
+        failPersistence();
+      }
+    },
+    removeItem: (name) => {
+      memoryValues.delete(name);
+      if (persistenceUnavailable) return;
+      try {
+        const removed = storage?.removeItem(name);
+        if (removed instanceof Promise) return removed.catch(failPersistence);
+      } catch {
+        failPersistence();
+      }
+    },
+  };
 
   return create<ArchitectureStore>()(
     persist<ArchitectureStore, [], [], PersistedArchitectureState>(
       (set, get) => {
+        notifyPersistenceUnavailable = () => {
+          if (get()) set({ persistenceUnavailable: true });
+        };
         const requireAgentPermission = (actor: Actor) => {
           if (actor === 'agent' && !options.isAgentEditingEnabled?.()) {
             throw new ArchitectureDomainError(
@@ -366,6 +393,7 @@ export function createArchitectureStore(
           past: [],
           future: [],
           persistenceRecoveryNotice: null,
+          persistenceUnavailable,
 
           createArchitecture: (input, actor = 'human') => {
             requireHuman(actor);

@@ -6,16 +6,27 @@ export const healthResponse = {
 const worker = {
   fetch(request: Request): Response {
     const { pathname } = new URL(request.url);
+    const headers = {
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+    };
 
-    if (request.method === 'GET' && pathname === '/api/health') {
-      return Response.json(healthResponse, {
-        headers: {
-          'Cache-Control': 'no-store',
+    if (pathname === '/api/health') {
+      if (request.method === 'HEAD') return new Response(null, { headers });
+      if (request.method === 'GET')
+        return Response.json(healthResponse, { headers });
+      return Response.json(
+        {
+          error: {
+            code: 'METHOD_NOT_ALLOWED',
+            message: 'Use GET or HEAD for service health.',
+          },
         },
-      });
+        { status: 405, headers: { ...headers, Allow: 'GET, HEAD' } },
+      );
     }
 
-    if (pathname.startsWith('/api/')) {
+    if (pathname === '/api' || pathname.startsWith('/api/')) {
       return Response.json(
         {
           error: {
@@ -23,7 +34,7 @@ const worker = {
             message: 'API route not found.',
           },
         },
-        { status: 404 },
+        { status: 404, headers },
       );
     }
 

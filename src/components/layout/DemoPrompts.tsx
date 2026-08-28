@@ -5,7 +5,7 @@ import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
 
 const demoPrompts = [
   'Analyze this architecture for production readiness. Do not modify anything.',
-  'Improve the architecture to survive an availability-zone failure while staying under my budget. Keep PostgreSQL.',
+  'Improve this architecture to survive an availability-zone failure while staying below my budget. Keep PostgreSQL.',
   'Simulate the loss of eu-west-1a.',
 ] as const;
 
@@ -50,11 +50,11 @@ export function DemoPrompts() {
       {open ? (
         <section
           id="demo-prompts-popover"
-          className="absolute right-0 top-10 z-50 w-[25rem] border border-slate-700 bg-[#0c1118] p-3 shadow-2xl shadow-black/60"
+          className="absolute right-0 top-10 z-50 w-[min(25rem,calc(100vw-2rem))] whitespace-normal border border-slate-700 bg-[#0c1118] p-3 shadow-2xl shadow-black/60"
           aria-label="Suggested demo prompts"
         >
           <div className="mb-3 flex items-start gap-2">
-            <div>
+            <div className="min-w-0 flex-1">
               <h2 className="text-[12px] font-semibold uppercase tracking-[0.1em] text-slate-300">
                 Demo prompts
               </h2>
@@ -82,7 +82,7 @@ export function DemoPrompts() {
                 <span className="grid size-5 shrink-0 place-items-center border border-slate-700 font-mono text-[10px] text-slate-500">
                   {index + 1}
                 </span>
-                <p className="min-w-0 flex-1 text-[11px] leading-4 text-slate-400">
+                <p className="min-w-0 flex-1 text-[12px] leading-5 text-slate-400">
                   “{prompt}”
                 </p>
                 <button

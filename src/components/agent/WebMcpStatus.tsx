@@ -69,7 +69,7 @@ function DebugPanel({ onClose }: { onClose: () => void }) {
     <section
       id="webmcp-debug-panel"
       aria-label="WebMCP diagnostics"
-      className="absolute right-0 top-10 z-50 w-[min(26rem,calc(100vw-2rem))] border border-slate-700 bg-[#0d121a] p-3 text-left shadow-2xl shadow-black/40"
+      className="absolute right-0 top-10 z-50 max-h-[calc(100dvh-5rem)] w-[min(26rem,calc(100vw-2rem))] overflow-auto whitespace-normal border border-slate-700 bg-[#0d121a] p-3 text-left shadow-2xl shadow-black/40"
     >
       <div className="mb-3 flex items-center justify-between">
         <div>
@@ -90,7 +90,7 @@ function DebugPanel({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      <dl className="grid grid-cols-[6rem_1fr] gap-x-3 gap-y-2 text-[13px]">
+      <dl className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 gap-y-2 break-words text-[13px]">
         <dt className="text-slate-500">Mode</dt>
         <dd className="font-medium text-slate-300">
           {mode === 'review'

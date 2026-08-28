@@ -6,7 +6,7 @@
   "description": "The architecture canvas built for humans and agents.",
   "license": "AGPL-3.0-or-later",
   "engines": {
-    "node": ">=20.19.0"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "dev": "cross-env WRANGLER_LOG_PATH=.wrangler/logs vite",
@@ -16,6 +16,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "eval:webmcp": "vitest run evals/webmcp",
+    "test:production": "npm run build && cross-env WRANGLER_LOG_PATH=.wrangler/logs node scripts/production-smoke.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",

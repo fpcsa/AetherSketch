@@ -3,10 +3,12 @@ import { ArrowRight, Trash2 } from 'lucide-react';
 import type {
   ArchitectureConnection,
   ConnectionType,
+  ConnectionUpdate,
 } from '../../architecture/model';
 import { CONNECTION_TYPES } from '../../architecture/model';
 import { useArchitectureStore } from '../../stores/architecture-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
+import { runWorkspaceAction } from '../layout/workspace-actions';
 
 const inputClass =
   'mt-1 h-8 w-full border border-slate-700 bg-[#0a0f16] px-2 text-[12px] text-slate-200 outline-none focus:border-cyan-400/70';
@@ -24,6 +26,11 @@ export function ConnectionInspector({ connection }: ConnectionInspectorProps) {
     (state) => state.disconnectComponents,
   );
   const clearSelection = useWorkspaceUiStore((state) => state.clearSelection);
+  const commit = (changes: ConnectionUpdate) =>
+    runWorkspaceAction(
+      () => updateConnection(connection.id, changes),
+      'The connection could not be updated.',
+    );
   const source = architecture.components.find(
     (component) => component.id === connection.source,
   );
@@ -59,7 +66,7 @@ export function ConnectionInspector({ connection }: ConnectionInspectorProps) {
             className={inputClass}
             value={connection.type}
             onChange={(event) =>
-              updateConnection(connection.id, {
+              commit({
                 type: event.currentTarget.value as ConnectionType,
               })
             }
@@ -82,7 +89,7 @@ export function ConnectionInspector({ connection }: ConnectionInspectorProps) {
             onBlur={(event) => {
               const protocol = event.currentTarget.value.trim();
               if (protocol !== (connection.protocol ?? '')) {
-                updateConnection(connection.id, {
+                commit({
                   protocol: protocol || undefined,
                 });
               }
@@ -96,7 +103,7 @@ export function ConnectionInspector({ connection }: ConnectionInspectorProps) {
             type="checkbox"
             checked={connection.encrypted}
             onChange={(event) =>
-              updateConnection(connection.id, {
+              commit({
                 encrypted: event.currentTarget.checked,
               })
             }
@@ -110,7 +117,7 @@ export function ConnectionInspector({ connection }: ConnectionInspectorProps) {
             type="checkbox"
             checked={connection.critical}
             onChange={(event) =>
-              updateConnection(connection.id, {
+              commit({
                 critical: event.currentTarget.checked,
               })
             }
@@ -123,8 +130,10 @@ export function ConnectionInspector({ connection }: ConnectionInspectorProps) {
         <button
           type="button"
           onClick={() => {
-            disconnectComponents(connection.id);
-            clearSelection();
+            runWorkspaceAction(() => {
+              disconnectComponents(connection.id);
+              clearSelection();
+            }, 'The connection could not be deleted.');
           }}
           className="flex h-8 w-full items-center justify-center gap-1.5 border border-slate-700 text-[12px] font-medium text-slate-400 transition-colors hover:border-rose-400/50 hover:text-rose-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/70"
         >

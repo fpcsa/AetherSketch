@@ -27,6 +27,7 @@ import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
 import { useWebMcpStore } from '../../webmcp';
 import { WebMcpStatus } from '../agent/WebMcpStatus';
 import { DemoPrompts } from './DemoPrompts';
+import { runWorkspaceAction } from './workspace-actions';
 
 const iconButtonClass =
   'grid size-8 place-items-center border border-transparent text-slate-500 transition-colors enabled:hover:border-slate-700 enabled:hover:bg-slate-800 enabled:hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80';
@@ -52,7 +53,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function describeImportError(error: unknown): string {
   if (!isArchitectureDomainError(error)) {
-    return error instanceof Error ? error.message : 'Import failed.';
+    return 'The file could not be read or imported.';
   }
 
   const issues = error.details?.issues;
@@ -117,20 +118,31 @@ export function TopBar() {
     if (value === 'custom') {
       return;
     }
-    resetAgentSession();
-    if (value === 'blank') {
-      createArchitecture({
-        name: 'Blank Architecture',
-        description: 'A clean architecture workspace.',
-        provider: architecture.provider,
-        region: architecture.region,
-      });
-    } else {
-      resetArchitecture(value as ArchitectureTemplateId);
+    if (
+      !runWorkspaceAction(() => {
+        if (value === 'blank') {
+          createArchitecture({
+            name: 'Blank Architecture',
+            description: 'A clean architecture workspace.',
+            provider: architecture.provider,
+            region: architecture.region,
+          });
+        } else {
+          resetArchitecture(value as ArchitectureTemplateId);
+        }
+        resetAgentSession();
+        clearSelection();
+      }, 'The template could not be loaded. Your architecture remains available.')
+    )
+      return;
+    if (
+      runWorkspaceAction(
+        () => runAnalysis(),
+        'Template loaded, but analysis failed. Retry analysis.',
+      )
+    ) {
+      setNotice({ kind: 'success', message: 'Architecture template loaded.' });
     }
-    clearSelection();
-    runAnalysis();
-    setNotice({ kind: 'success', message: 'Architecture template loaded.' });
   };
 
   const exportArchitecture = () => {
@@ -156,36 +168,60 @@ export function TopBar() {
       return;
     }
 
+    let imported;
     try {
-      const imported = deserializeArchitecture(await file.text());
-      resetAgentSession();
-      loadArchitecture(imported);
-      clearSelection();
-      runAnalysis();
-      setNotice({
-        kind: 'success',
-        message: `${imported.name} imported successfully.`,
-      });
+      imported = deserializeArchitecture(await file.text());
     } catch (error) {
       setNotice({
         kind: 'error',
         message: `${describeImportError(error)} The current project was left unchanged.`,
       });
+      return;
+    }
+    if (
+      !runWorkspaceAction(() => {
+        loadArchitecture(imported);
+        resetAgentSession();
+        clearSelection();
+      }, 'Import could not complete. Your architecture remains available.')
+    )
+      return;
+    if (
+      runWorkspaceAction(
+        () => runAnalysis(),
+        'Architecture imported, but analysis failed. Retry analysis.',
+      )
+    ) {
+      setNotice({
+        kind: 'success',
+        message: `${imported.name} imported successfully.`,
+      });
     }
   };
 
   const resetCanonicalDemo = () => {
-    resetAgentSession();
-    resetDemo();
-    clearSimulation();
-    clearSelection();
-    setActivePanel('inspector');
-    setActivityOpen(false);
-    runAnalysis();
-    setNotice({
-      kind: 'success',
-      message: 'Canonical Ecommerce demo restored and session state cleared.',
-    });
+    if (
+      !runWorkspaceAction(() => {
+        resetDemo();
+        resetAgentSession();
+        clearSimulation();
+        clearSelection();
+        setActivePanel('inspector');
+        setActivityOpen(false);
+      }, 'The demo could not be reset. Your architecture remains available.')
+    )
+      return;
+    if (
+      runWorkspaceAction(
+        () => runAnalysis(),
+        'Demo restored, but analysis failed. Retry analysis.',
+      )
+    ) {
+      setNotice({
+        kind: 'success',
+        message: 'Canonical Ecommerce demo restored and session state cleared.',
+      });
+    }
   };
 
   return (
@@ -245,8 +281,10 @@ export function TopBar() {
               canUndo ? 'Undo last architecture change' : 'Nothing to undo'
             }
             onClick={() => {
-              undo();
-              clearSelection();
+              runWorkspaceAction(() => {
+                undo();
+                clearSelection();
+              }, 'Undo could not complete.');
             }}
             disabled={!canUndo}
           >
@@ -260,8 +298,10 @@ export function TopBar() {
               canRedo ? 'Redo last architecture change' : 'Nothing to redo'
             }
             onClick={() => {
-              redo();
-              clearSelection();
+              runWorkspaceAction(() => {
+                redo();
+                clearSelection();
+              }, 'Redo could not complete.');
             }}
             disabled={!canRedo}
           >
@@ -301,7 +341,12 @@ export function TopBar() {
         <button
           type="button"
           className="flex h-8 items-center gap-1.5 border border-transparent px-2 text-[12px] font-medium text-slate-500 transition-colors hover:border-slate-700 hover:bg-slate-800 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80"
-          onClick={exportArchitecture}
+          onClick={() =>
+            runWorkspaceAction(
+              exportArchitecture,
+              'Export could not complete. Your architecture remains available.',
+            )
+          }
         >
           <Download className="size-3.5" aria-hidden="true" />
           <span className="max-[1400px]:sr-only">Export</span>

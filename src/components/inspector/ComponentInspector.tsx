@@ -9,6 +9,7 @@ import type {
 } from '../../architecture/model';
 import { useArchitectureStore } from '../../stores/architecture-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
+import { runWorkspaceAction } from '../layout/workspace-actions';
 
 const configurationOptions: Partial<
   Record<ComponentKind, Record<string, readonly string[]>>
@@ -57,7 +58,6 @@ const inputClass =
 function formatPropertyName(name: string): string {
   return name
     .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/AZ/g, 'AZ')
     .replace(/^./, (character) => character.toUpperCase());
 }
 
@@ -311,9 +311,13 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
         <button
           type="button"
           onClick={() =>
-            component.locked
-              ? unlockComponent(component.id)
-              : lockComponent(component.id)
+            runWorkspaceAction(
+              () =>
+                component.locked
+                  ? unlockComponent(component.id)
+                  : lockComponent(component.id),
+              'The component lock could not be changed.',
+            )
           }
           className="flex h-8 flex-1 items-center justify-center gap-1.5 border border-slate-700 text-[12px] font-medium text-slate-300 transition-colors hover:border-cyan-400/40 hover:text-cyan-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80"
         >
@@ -328,8 +332,10 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
           type="button"
           disabled={component.locked}
           onClick={() => {
-            removeComponent(component.id);
-            clearSelection();
+            runWorkspaceAction(() => {
+              removeComponent(component.id);
+              clearSelection();
+            }, 'The component could not be deleted.');
           }}
           className="grid size-8 place-items-center border border-slate-700 text-slate-500 transition-colors enabled:hover:border-rose-400/50 enabled:hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/70"
           aria-label={`Delete ${component.name}`}

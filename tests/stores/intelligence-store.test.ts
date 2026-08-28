@@ -1,5 +1,6 @@
 import { createJSONStorage, type StateStorage } from 'zustand/middleware';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { analyzeArchitecture } from '../../src/architecture/analysis';
 
 import {
   createArchitectureStore,
@@ -28,6 +29,53 @@ function createSourceStore() {
 }
 
 describe('transient intelligence store', () => {
+  it('survives an initial analysis exception and can retry without altering the architecture', () => {
+    const source = createSourceStore();
+    const before = source.getState();
+    const analyze = vi.fn(analyzeArchitecture).mockImplementationOnce(() => {
+      throw new Error('internal engine detail');
+    });
+    const intelligence = createIntelligenceStore(source, analyze);
+    expect(intelligence.getState()).toMatchObject({
+      analysis: null,
+      analysisRevision: null,
+    });
+    expect(intelligence.getState().analysisError).toMatch(/retry analysis/i);
+    expect(intelligence.getState().analysisError).not.toContain(
+      'internal engine detail',
+    );
+    expect(intelligence.getState().runAnalysis().estimatedMonthlyCost).toBe(
+      675,
+    );
+    expect(intelligence.getState().analysisError).toBeNull();
+    expect(source.getState()).toBe(before);
+    intelligence.getState().dispose();
+  });
+
+  it('marks retained metrics stale on analysis failure and clears failed simulation results', () => {
+    const source = createSourceStore();
+    const analyze = vi.fn(analyzeArchitecture);
+    const intelligence = createIntelligenceStore(source, analyze);
+    const previous = intelligence.getState().analysis;
+    analyze.mockImplementationOnce(() => {
+      throw new Error('engine failed');
+    });
+    expect(() => intelligence.getState().runAnalysis()).toThrow(
+      'engine failed',
+    );
+    expect(intelligence.getState().analysis).toBe(previous);
+    expect(intelligence.getState().analysisStale).toBe(true);
+    intelligence
+      .getState()
+      .runSimulation({ scope: 'availability-zone', target: 'eu-west-1a' });
+    expect(() =>
+      intelligence
+        .getState()
+        .runSimulation({ scope: 'component', target: 'missing' }),
+    ).toThrow();
+    expect(intelligence.getState().simulation).toBeNull();
+    intelligence.getState().dispose();
+  });
   it('runs and clears analysis independently from architecture state', () => {
     const architectureStore = createSourceStore();
     const intelligenceStore = createIntelligenceStore(architectureStore);

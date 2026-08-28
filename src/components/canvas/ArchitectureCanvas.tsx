@@ -35,6 +35,7 @@ import { useArchitectureStore } from '../../stores/architecture-store';
 import { useIntelligenceStore } from '../../stores/intelligence-store';
 import { useThemeStore } from '../../stores/theme-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
+import { runWorkspaceAction } from '../layout/workspace-actions';
 import { ArchitectureEdge } from './ArchitectureEdge';
 import { ArchitectureNode } from './ArchitectureNode';
 import { getComponentVisual } from './component-visuals';
@@ -263,12 +264,14 @@ function ArchitectureCanvasInner() {
         x: event.clientX,
         y: event.clientY,
       });
-      const component = addComponent({
-        kind: kind as ComponentKind,
-        position,
-      });
-      selectComponent(component.id);
-      setActivePanel('inspector');
+      runWorkspaceAction(() => {
+        const component = addComponent({
+          kind: kind as ComponentKind,
+          position,
+        });
+        selectComponent(component.id);
+        setActivePanel('inspector');
+      }, 'The component could not be added.');
     },
     [addComponent, screenToFlowPosition, selectComponent, setActivePanel],
   );
@@ -288,14 +291,33 @@ function ArchitectureCanvasInner() {
   const handleNodeDragStop: OnNodeDrag<ArchitectureFlowNode> = useCallback(
     (_event, node) => {
       draggingRef.current = false;
-      moveComponent(node.id, node.position);
+      if (
+        !runWorkspaceAction(
+          () => moveComponent(node.id, node.position),
+          'The component could not be moved.',
+        )
+      ) {
+        setFlowNodes(projectedNodes);
+      }
     },
-    [moveComponent],
+    [moveComponent, projectedNodes, setFlowNodes],
   );
 
   const handleEdgesDelete = useCallback(
     (deletedEdges: ArchitectureFlowEdge[]) => {
-      deletedEdges.forEach((edge) => disconnectComponents(edge.id));
+      deletedEdges.forEach((edge) => {
+        // Node removal may already have removed the incident edge.
+        if (
+          useArchitectureStore
+            .getState()
+            .architecture.connections.some((item) => item.id === edge.id)
+        ) {
+          runWorkspaceAction(
+            () => disconnectComponents(edge.id),
+            'The connection could not be deleted.',
+          );
+        }
+      });
       clearSelection();
     },
     [clearSelection, disconnectComponents],
@@ -303,7 +325,12 @@ function ArchitectureCanvasInner() {
 
   const handleNodesDelete = useCallback(
     (deletedNodes: ArchitectureFlowNode[]) => {
-      deletedNodes.forEach((node) => removeComponent(node.id));
+      deletedNodes.forEach((node) =>
+        runWorkspaceAction(
+          () => removeComponent(node.id),
+          'The component could not be deleted.',
+        ),
+      );
       clearSelection();
     },
     [clearSelection, removeComponent],

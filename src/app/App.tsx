@@ -1,6 +1,6 @@
 import { ArchitectureCanvas } from '../components/canvas/ArchitectureCanvas';
 import { AgentSessionComparison } from '../components/agent/AgentSessionComparison';
-import { CanvasErrorBoundary } from '../components/canvas/CanvasErrorBoundary';
+import { RenderErrorBoundary } from '../components/layout/RenderErrorBoundary';
 import { InspectorSidebar } from '../components/inspector/InspectorSidebar';
 import { ActivityDrawer } from '../components/layout/ActivityDrawer';
 import { PersistenceRecoveryNotice } from '../components/layout/PersistenceRecoveryNotice';
@@ -33,9 +33,9 @@ export function App() {
       <div className="grid min-h-0 flex-1 grid-cols-[220px_minmax(0,1fr)_344px] overflow-hidden max-[1180px]:grid-cols-[204px_minmax(0,1fr)_320px]">
         <ComponentPalette />
         <main id="architecture-canvas" className="min-w-0 bg-[#090d13]">
-          <CanvasErrorBoundary>
+          <RenderErrorBoundary>
             <ArchitectureCanvas />
-          </CanvasErrorBoundary>
+          </RenderErrorBoundary>
         </main>
         <InspectorSidebar />
       </div>

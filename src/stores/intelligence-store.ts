@@ -5,7 +5,6 @@ import {
   type AnalyzeArchitectureOptions,
   type ArchitectureAnalysis,
 } from '../architecture/analysis';
-import type { Architecture } from '../architecture/model';
 import {
   simulateFailure,
   type FailureSimulationInput,
@@ -23,6 +22,7 @@ type ArchitectureStateSource = Pick<
 
 export type IntelligenceStore = {
   analysis: ArchitectureAnalysis | null;
+  analysisError: string | null;
   analysisRevision: number | null;
   analysisStale: boolean;
   simulation: FailureSimulationResult | null;
@@ -34,46 +34,69 @@ export type IntelligenceStore = {
   dispose: () => void;
 };
 
-function analyzeCurrentArchitecture(
-  architecture: Architecture,
-): ArchitectureAnalysis {
-  return analyzeArchitecture(architecture);
-}
-
 export function createIntelligenceStore(
   architectureSource: ArchitectureStateSource = useArchitectureStore,
+  analyze: typeof analyzeArchitecture = analyzeArchitecture,
 ) {
   const initialArchitecture = architectureSource.getState().architecture;
-  const initialAnalysis = analyzeCurrentArchitecture(initialArchitecture);
+  let initialAnalysis: ArchitectureAnalysis | null = null;
+  let initialError: string | null = null;
+  try {
+    initialAnalysis = analyze(initialArchitecture);
+  } catch {
+    initialError =
+      'Analysis could not complete. Your architecture is still available; retry analysis.';
+  }
   let unsubscribeFromArchitecture: () => void = () => undefined;
 
   const useStore = create<IntelligenceStore>((set) => ({
     analysis: initialAnalysis,
-    analysisRevision: initialArchitecture.revision,
+    analysisError: initialError,
+    analysisRevision: initialAnalysis ? initialArchitecture.revision : null,
     analysisStale: false,
     simulation: null,
     simulationRevision: null,
 
     runAnalysis: (options) => {
       const architecture = architectureSource.getState().architecture;
-      const analysis = analyzeArchitecture(architecture, options);
-      set({
-        analysis,
-        analysisRevision: architecture.revision,
-        analysisStale: false,
-      });
-      return analysis;
+      try {
+        const analysis = analyze(architecture, options);
+        set({
+          analysis,
+          analysisError: null,
+          analysisRevision: architecture.revision,
+          analysisStale: false,
+        });
+        return analysis;
+      } catch (error) {
+        set((state) => ({
+          analysisError:
+            'Analysis could not complete. Your architecture is still available; retry analysis.',
+          analysisStale: state.analysis !== null,
+        }));
+        throw error;
+      }
     },
 
     clearAnalysis: () => {
-      set({ analysis: null, analysisRevision: null, analysisStale: false });
+      set({
+        analysis: null,
+        analysisError: null,
+        analysisRevision: null,
+        analysisStale: false,
+      });
     },
 
     runSimulation: (input) => {
       const architecture = architectureSource.getState().architecture;
-      const simulation = simulateFailure(architecture, input);
-      set({ simulation, simulationRevision: architecture.revision });
-      return simulation;
+      try {
+        const simulation = simulateFailure(architecture, input);
+        set({ simulation, simulationRevision: architecture.revision });
+        return simulation;
+      } catch (error) {
+        set({ simulation: null, simulationRevision: null });
+        throw error;
+      }
     },
 
     clearSimulation: () => {

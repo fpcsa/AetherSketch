@@ -92,5 +92,5 @@ Expected failures use machine-recoverable codes, including:
 - Agent Edit Mode is page-local and is not an identity or authentication system.
 - Activity is a local product history, not a tamper-proof audit log.
 - The application models architecture but cannot deploy infrastructure or access a cloud account.
-- localStorage persistence is not suitable for secrets; Architecture IR should not contain credentials.
+- localStorage persistence is not suitable for secrets; Architecture IR should not contain credentials. Blocked/full storage falls back to session memory with a persistent export warning; it is not durable storage.
 - WebMCP itself is an evolving browser API, so supported environments and lifecycle behavior must continue to be verified against the current specification and browser implementation.

@@ -1,5 +1,5 @@
 import { createJSONStorage, type StateStorage } from 'zustand/middleware';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   ArchitectureDomainError,
@@ -376,6 +376,60 @@ describe('architecture history and activity', () => {
 });
 
 describe('architecture local persistence', () => {
+  it('keeps edits and history usable when storage fills after hydration', () => {
+    const memory = createMemoryStorage();
+    const storage = createPersistStorage(memory);
+    const store = createArchitectureStore({ storage });
+    store.getState().renameArchitecture('Saved project');
+    const saved = memory.getItem(ARCHITECTURE_STORAGE_KEY);
+    const failingWrite = vi.spyOn(storage, 'setItem').mockImplementation(() => {
+      throw new DOMException('Storage is full', 'QuotaExceededError');
+    });
+    expect(() =>
+      store.getState().renameArchitecture('In memory project'),
+    ).not.toThrow();
+    expect(store.getState().persistenceUnavailable).toBe(true);
+    expect(store.getState().architecture.name).toBe('In memory project');
+    expect(store.getState().undo()).toBe(true);
+    expect(store.getState().architecture.name).toBe('Saved project');
+    expect(store.getState().redo()).toBe(true);
+    expect(store.getState().architecture.name).toBe('In memory project');
+    expect(memory.getItem(ARCHITECTURE_STORAGE_KEY)).toBe(saved);
+    expect(failingWrite).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles asynchronous write rejection without an unhandled promise or lost commit', async () => {
+    const storage = createPersistStorage(createMemoryStorage());
+    storage.setItem = () => Promise.reject(new Error('Storage unavailable'));
+    const store = createArchitectureStore({ storage, skipHydration: true });
+    store.getState().renameArchitecture('Current session');
+    await Promise.resolve();
+    expect(store.getState().persistenceUnavailable).toBe(true);
+    expect(store.getState().architecture.name).toBe('Current session');
+    expect(store.getState().past).toHaveLength(1);
+    expect(store.getState().activity).toHaveLength(1);
+  });
+
+  it('starts a usable memory-only workspace when localStorage access is denied', () => {
+    const denied = vi
+      .spyOn(window, 'localStorage', 'get')
+      .mockImplementation(() => {
+        throw new DOMException('Access denied', 'SecurityError');
+      });
+    try {
+      const store = createArchitectureStore();
+      expect(store.getState().persistenceUnavailable).toBe(true);
+      expect(() =>
+        store.getState().addComponent({ kind: 'queue' }),
+      ).not.toThrow();
+      expect(store.getState().architecture.components).toHaveLength(6);
+      expect(() => store.getState().resetDemo()).not.toThrow();
+      expect(store.getState().architecture.components).toHaveLength(5);
+      expect(store.getState().past).toEqual([]);
+    } finally {
+      denied.mockRestore();
+    }
+  });
   it('recovers from malicious metadata and oversized history without overwriting the saved source', () => {
     const template = getArchitectureTemplate('ecommerce-production');
     for (const state of [

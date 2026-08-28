@@ -1,6 +1,6 @@
 # Security policy and threat model
 
-AetherSketch is a local architecture modeler, not a cloud control plane. It contains no cloud credentials, deployment tools, embedded LLM, or inference backend. Its Worker exposes a health endpoint, not architecture mutation APIs. Do not enter secrets into names, notes, configuration, metadata, or imports.
+AetherSketch is a local architecture modeler, not a cloud control plane. The browser product has no cloud credential fields, infrastructure deployment tools, embedded LLM, or inference backend. Its Worker exposes a health endpoint, not architecture mutation APIs. Repository deployment scripts publish only the application Worker and static assets using the owner's Cloudflare authorization. Do not enter secrets into names, notes, configuration, metadata, or imports.
 
 ## What is protected
 
@@ -40,6 +40,8 @@ React renders ordinary text and attributes; imported HTML/JavaScript is not inse
 ## Client-side persistence and disclosure
 
 Architecture, undo history and activity are stored in this origin's localStorage, without encryption. Other scripts/extensions with origin access may read them. Tool discovery and execution can disclose architecture data to the user's browser agent. Never use real account identifiers or confidential infrastructure details in shared demos. Exported JSON retains metadata; inspect it before sharing.
+
+If storage is unavailable or a write fails, the current store continues in memory and displays a persistent warning. The last successful saved snapshot remains; export current changes before reload or closing the tab. Analysis/render failures do not imply that unsaved work is durable. Production asset headers preserve origin isolation and same-origin tool permissions; they do not authenticate an agent.
 
 ## Reporting
 

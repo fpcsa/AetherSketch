@@ -49,15 +49,11 @@ describe('deterministic architecture comparison', () => {
           ),
         );
       }
-      const start = performance.now();
       for (let pass = 0; pass < 20; pass += 1) {
         const comparison = compareArchitectures(baseline, current);
         expect(comparison.added).toHaveLength(count - 5);
         expect(comparison.changed).toEqual([]);
       }
-      console.info(
-        `Comparison smoke: ${count} components, 20 passes, ${(performance.now() - start).toFixed(1)} ms`,
-      );
     },
   );
 

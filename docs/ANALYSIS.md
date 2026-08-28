@@ -123,3 +123,5 @@ The graph model does not simulate traffic volume, latency, dependency timeouts, 
 ## Transient result lifecycle
 
 Analysis and simulation results live in `useIntelligenceStore`, not in persisted project state. A run records the Architecture revision used. An Architecture change marks analysis stale and clears the prior simulation; users or tools must explicitly rerun analysis. Intelligence operations never create undo history. When WebMCP initiates a successful analysis or simulation, the adapter separately appends an agent activity entry so the shared UI reflects the action in near real time.
+
+If analysis throws, the architecture remains editable. Initial failure leaves metrics unavailable; a later failure retains the previous metrics but marks them stale and exposes a retry message. A failed simulation clears the previous overlay. Neither failure changes Architecture IR.

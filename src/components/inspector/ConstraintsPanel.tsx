@@ -7,6 +7,7 @@ import type {
 import { useArchitectureStore } from '../../stores/architecture-store';
 import { useIntelligenceStore } from '../../stores/intelligence-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
+import { runWorkspaceAction } from '../layout/workspace-actions';
 
 const inputClass =
   'mt-1 h-8 w-full border border-slate-700 bg-[#0a0f16] px-2 text-[12px] text-slate-200 outline-none placeholder:text-slate-700 focus:border-cyan-400/70';
@@ -187,7 +188,12 @@ export function ConstraintsPanel() {
 
       <button
         type="button"
-        onClick={() => runAnalysis()}
+        onClick={() =>
+          runWorkspaceAction(
+            () => runAnalysis(),
+            'Analysis could not complete. Retry analysis; your architecture remains available.',
+          )
+        }
         className="flex h-8 w-full items-center justify-center gap-1.5 border border-cyan-400/30 bg-cyan-400/8 text-[12px] font-semibold text-cyan-200 transition-colors hover:bg-cyan-400/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80"
       >
         <Play className="size-3" aria-hidden="true" />

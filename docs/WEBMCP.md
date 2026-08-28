@@ -214,6 +214,8 @@ WebMCP is a proposed API under active development. The page requires a secure, o
 
 Unsupported browsers retain the complete human editor, deterministic analysis, simulation, import/export, history, and local persistence. No polyfill, extension requirement, fake registration, or degraded application mode is introduced.
 
+Production asset responses set `Origin-Agent-Cluster: ?1` and `Permissions-Policy: tools=(self)`. These preserve origin isolation and same-origin tool access; they do not authenticate agents or make an unsupported browser expose WebMCP. See [deployment checks](DEPLOYMENT.md) for the production HTTP smoke test and owner publishing steps.
+
 ## Testing with ChatGPT's in-app browser
 
 1. Start AetherSketch locally or open its deployed Cloudflare URL in a ChatGPT in-app browser that exposes WebMCP.

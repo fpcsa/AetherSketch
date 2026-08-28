@@ -7,6 +7,7 @@ import type {
 import { useArchitectureStore } from '../../stores/architecture-store';
 import { useIntelligenceStore } from '../../stores/intelligence-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
+import { runWorkspaceAction } from '../layout/workspace-actions';
 
 const severityOrder: readonly FindingSeverity[] = [
   'critical',
@@ -27,6 +28,7 @@ const severityClasses: Record<FindingSeverity, string> = {
 export function AnalysisPanel() {
   const architecture = useArchitectureStore((state) => state.architecture);
   const analysis = useIntelligenceStore((state) => state.analysis);
+  const analysisError = useIntelligenceStore((state) => state.analysisError);
   const analysisStale = useIntelligenceStore((state) => state.analysisStale);
   const runAnalysis = useIntelligenceStore((state) => state.runAnalysis);
   const clearAnalysis = useIntelligenceStore((state) => state.clearAnalysis);
@@ -73,7 +75,12 @@ export function AnalysisPanel() {
       <div className="flex h-10 shrink-0 items-center gap-2 border-b border-slate-800/80 px-3">
         <button
           type="button"
-          onClick={() => runAnalysis()}
+          onClick={() =>
+            runWorkspaceAction(
+              () => runAnalysis(),
+              'Analysis could not complete. Retry analysis; your architecture remains available.',
+            )
+          }
           className="flex h-7 items-center gap-1.5 border border-cyan-400/30 bg-cyan-400/8 px-2.5 text-[11px] font-semibold text-cyan-200 transition-colors hover:bg-cyan-400/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80"
         >
           {analysisStale ? (
@@ -104,6 +111,14 @@ export function AnalysisPanel() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-3">
+        {analysisError ? (
+          <p
+            role="alert"
+            className="mb-3 border border-rose-400/30 bg-rose-400/10 p-3 text-xs text-rose-300"
+          >
+            {analysisError}
+          </p>
+        ) : null}
         {analysis ? (
           <>
             {analysisStale ? (

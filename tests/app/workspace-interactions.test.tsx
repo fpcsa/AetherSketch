@@ -81,11 +81,12 @@ describe('human architecture workspace', () => {
     const prompts = screen.getByRole('region', {
       name: 'Suggested demo prompts',
     });
+    expect(prompts).toHaveClass('whitespace-normal');
     expect(prompts).toHaveTextContent(
       'Analyze this architecture for production readiness. Do not modify anything.',
     );
     expect(prompts).toHaveTextContent(
-      'Improve the architecture to survive an availability-zone failure while staying under my budget. Keep PostgreSQL.',
+      'Improve this architecture to survive an availability-zone failure while staying below my budget. Keep PostgreSQL.',
     );
     expect(prompts).toHaveTextContent('Simulate the loss of eu-west-1a.');
     expect(
@@ -127,7 +128,7 @@ describe('human architecture workspace', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Demo prompts' }));
       const prompts = [
         'Analyze this architecture for production readiness. Do not modify anything.',
-        'Improve the architecture to survive an availability-zone failure while staying under my budget. Keep PostgreSQL.',
+        'Improve this architecture to survive an availability-zone failure while staying below my budget. Keep PostgreSQL.',
         'Simulate the loss of eu-west-1a.',
       ];
       for (const [index, prompt] of prompts.entries()) {
@@ -997,6 +998,9 @@ describe('human architecture workspace', () => {
     expect(
       useArchitectureStore.getState().architecture.components,
     ).toHaveLength(5);
+    expect(
+      useArchitectureStore.getState().architecture.connections,
+    ).toHaveLength(4);
     expect(useIntelligenceStore.getState()).toMatchObject({
       simulation: null,
       analysisStale: false,
@@ -1115,6 +1119,9 @@ describe('human architecture workspace', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Toggle WebMCP diagnostics' }),
     );
+    expect(
+      screen.getByRole('region', { name: 'WebMCP diagnostics' }),
+    ).toHaveClass('whitespace-normal', 'overflow-auto');
     expect(
       screen.getByRole('region', { name: 'WebMCP diagnostics' }),
     ).toBeVisible();
