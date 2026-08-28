@@ -26,7 +26,9 @@ function memoryStorage(): StateStorage {
 }
 
 function createHarness() {
+  let editModeEnabled = true;
   const architectureStore = createArchitectureStore({
+    isAgentEditingEnabled: () => editModeEnabled,
     initialArchitecture: getArchitectureTemplate('ecommerce-production'),
     storage: createJSONStorage<PersistedArchitectureState>(() =>
       memoryStorage(),
@@ -34,7 +36,6 @@ function createHarness() {
     skipHydration: true,
   });
   const intelligenceStore = createIntelligenceStore(architectureStore);
-  let editModeEnabled = true;
   const reporter = {
     invocation: vi.fn(),
     result: vi.fn(),
@@ -100,6 +101,103 @@ async function execute<T>(
 }
 
 describe('WebMCP mutation tools', () => {
+  it.each(WEBMCP_MUTATION_TOOL_NAMES)(
+    'fails closed for malformed inputs, cancelled calls and Review Mode: %s',
+    async (name) => {
+      const { tools, architectureStore, setEditMode } = createHarness();
+      const before = architectureStore.getState();
+      const tool = toolNamed(tools, name);
+      for (const input of [
+        null,
+        [],
+        {},
+        { unexpected: true },
+        JSON.parse('{"constructor":{"prototype":{"polluted":true}}}'),
+      ]) {
+        expect(
+          await execute(tool, input as Record<string, unknown>),
+        ).toMatchObject({ ok: false, error: { code: 'INVALID_INPUT' } });
+      }
+      const controller = new AbortController();
+      controller.abort();
+      expect(
+        await tool.execute({}, { signal: controller.signal }),
+      ).toMatchObject({ ok: false, error: { code: 'EXECUTION_ABORTED' } });
+      setEditMode(false);
+      expect(await execute(tool, {})).toMatchObject({
+        ok: false,
+        error: { code: 'EDIT_MODE_DISABLED' },
+      });
+      expect(architectureStore.getState()).toBe(before);
+      expect(Object.prototype).not.toHaveProperty('polluted');
+    },
+  );
+
+  it('cancels an in-flight edit before the synchronous domain commit', async () => {
+    const { tools, architectureStore } = createHarness();
+    const before = architectureStore.getState();
+    const controller = new AbortController();
+    const pending = toolNamed(tools, 'add_component').execute(
+      { kind: 'queue' },
+      { signal: controller.signal },
+    );
+    controller.abort();
+    expect(await pending).toMatchObject({
+      ok: false,
+      error: { code: 'EXECUTION_ABORTED' },
+    });
+    expect(architectureStore.getState()).toBe(before);
+  });
+
+  it.each([
+    { kind: 'not-a-kind' },
+    { kind: 'queue', replicas: 10001 },
+    { kind: 'queue', name: 'x'.repeat(241) },
+    { kind: 'queue', availabilityZones: ['eu-west-1a', 'eu-west-1a'] },
+    { kind: 'queue', configuration: { queueType: 'x'.repeat(241) } },
+    { kind: 'queue', configuration: { encrypted: { nested: true } } },
+    {
+      kind: 'queue',
+      configuration: JSON.parse('{"__proto__":{"polluted":true}}') as unknown,
+    },
+  ])('rejects invalid add input %j without side effects', async (input) => {
+    const { tools, architectureStore } = createHarness();
+    const before = architectureStore.getState();
+    expect(
+      await execute(toolNamed(tools, 'add_component'), input),
+    ).toMatchObject({ ok: false, error: { code: 'INVALID_INPUT' } });
+    expect(architectureStore.getState()).toBe(before);
+  });
+
+  it('returns structured missing-ID errors for every applicable mutation', async () => {
+    const { tools, architectureStore } = createHarness();
+    const before = architectureStore.getState();
+    for (const [name, input, code] of [
+      [
+        'update_component',
+        { componentId: 'missing', changes: { name: 'Example' } },
+        'COMPONENT_NOT_FOUND',
+      ],
+      ['remove_component', { componentId: 'missing' }, 'COMPONENT_NOT_FOUND'],
+      [
+        'connect_components',
+        {
+          sourceComponentId: 'missing',
+          targetComponentId: 'ecommerce-ecs',
+          type: 'request',
+        },
+        'COMPONENT_NOT_FOUND',
+      ],
+      ['disconnect_components', { connectionId: 'missing' }, 'EDGE_NOT_FOUND'],
+    ] as const) {
+      expect(await execute(toolNamed(tools, name), input)).toMatchObject({
+        ok: false,
+        error: { code },
+      });
+    }
+    expect(architectureStore.getState()).toBe(before);
+  });
+
   it('places demo additions in a compact grid without overlapping existing cards', async () => {
     const { tools, architectureStore } = createHarness();
     for (const kind of ['waf', 'queue', 'secrets-manager', 'sql-database']) {
@@ -157,7 +255,7 @@ describe('WebMCP mutation tools', () => {
     for (const tool of tools) {
       expect(tool.annotations).toEqual({
         readOnlyHint: false,
-        untrustedContentHint: false,
+        untrustedContentHint: true,
       });
       expect(tool.inputSchema).toMatchObject({
         type: 'object',

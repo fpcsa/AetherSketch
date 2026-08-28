@@ -36,7 +36,7 @@ const statusPresentation: Record<
     label: 'Ready',
     dot: 'bg-emerald-400',
     title:
-      'Four read-only tools are registered on this page. This does not imply that an agent is connected.',
+      'Four Review tools are registered. Analysis and simulation update presentation and activity, not architecture. This does not imply that an agent is connected.',
   },
   error: {
     label: 'Error',
@@ -93,7 +93,9 @@ function DebugPanel({ onClose }: { onClose: () => void }) {
       <dl className="grid grid-cols-[6rem_1fr] gap-x-3 gap-y-2 text-[13px]">
         <dt className="text-slate-500">Mode</dt>
         <dd className="font-medium text-slate-300">
-          {mode === 'review' ? 'Review Mode · read only' : 'Agent Edit Mode'}
+          {mode === 'review'
+            ? 'Review Mode · architecture read only'
+            : 'Agent Edit Mode'}
         </dd>
         <dt className="text-slate-500">Read tools</dt>
         <dd className="text-slate-300">
@@ -188,8 +190,12 @@ export function WebMcpStatus({ compact = false }: WebMcpStatusProps) {
       ? 'text-amber-400'
       : 'text-slate-500';
   const statusTitle = editFailed
-    ? `Edit-tool registration failed. ${readToolCount} read-only tools remain available. Disable and re-enable editing to retry. Manual editing still works.`
-    : presentation.title;
+    ? `Edit-tool registration failed. ${readToolCount} Review tools remain available. Disable and re-enable editing to retry. Manual editing still works.`
+    : status === 'ready' && mode === 'edit'
+      ? editRegistrationStatus === 'ready'
+        ? `${readToolCount} Review tools and ${editToolCount} edit tools are registered. Agents may modify unlocked architecture components and connections. This does not imply that an agent is connected.`
+        : 'Edit tools are registering. Agent mutations are blocked until registration completes.'
+      : presentation.title;
   const statusDot = editFailed ? 'bg-rose-400' : presentation.dot;
 
   const toggleEditing = () => {

@@ -7,6 +7,8 @@ import {
 } from 'zustand/middleware';
 
 import { createComponentFromCatalog } from '../architecture/catalog';
+import { jsonSafetyIssue } from '../architecture/model/json-safety';
+import { useWebMcpStore } from '../webmcp/webmcp-store';
 import {
   ArchitectureDomainError,
   activityEntrySchema,
@@ -107,6 +109,7 @@ export type ArchitectureStore = PersistedArchitectureState & {
 };
 
 type ArchitectureStoreOptions = {
+  isAgentEditingEnabled?: () => boolean;
   initialArchitecture?: Architecture;
   storage?: PersistStorage<PersistedArchitectureState>;
   storageKey?: string;
@@ -224,12 +227,29 @@ function parsedPersistedState(
   if (!value || typeof value !== 'object') {
     return null;
   }
+  if (
+    jsonSafetyIssue(value, {
+      maxDepth: 28,
+      maxNodes: 300_000,
+      maxCharacters: 8_000_000,
+    })
+  )
+    return null;
 
   const candidate = value as Partial<PersistedArchitectureState>;
   const architecture = architectureSchema.safeParse(candidate.architecture);
-  const activity = activityEntrySchema.array().safeParse(candidate.activity);
-  const past = architectureSchema.array().safeParse(candidate.past);
-  const future = architectureSchema.array().safeParse(candidate.future);
+  const activity = activityEntrySchema
+    .array()
+    .max(ACTIVITY_LIMIT)
+    .safeParse(candidate.activity);
+  const past = architectureSchema
+    .array()
+    .max(HISTORY_LIMIT)
+    .safeParse(candidate.past);
+  const future = architectureSchema
+    .array()
+    .max(HISTORY_LIMIT)
+    .safeParse(candidate.future);
 
   if (
     !architecture.success ||
@@ -285,6 +305,38 @@ export function createArchitectureStore(
   return create<ArchitectureStore>()(
     persist<ArchitectureStore, [], [], PersistedArchitectureState>(
       (set, get) => {
+        const requireAgentPermission = (actor: Actor) => {
+          if (actor === 'agent' && !options.isAgentEditingEnabled?.()) {
+            throw new ArchitectureDomainError(
+              'EDIT_MODE_DISABLED',
+              'Agent editing is disabled. Ask the human to enable Agent Edit Mode.',
+            );
+          }
+        };
+        const requireHuman = (actor: Actor) => {
+          if (actor === 'agent') {
+            throw new ArchitectureDomainError(
+              'HUMAN_ACTION_REQUIRED',
+              'This architecture action requires the human UI.',
+            );
+          }
+        };
+        const requireAgentFields = (
+          actor: Actor,
+          value: object,
+          fields: string[],
+        ) => {
+          requireAgentPermission(actor);
+          if (
+            actor === 'agent' &&
+            Object.keys(value).some((key) => !fields.includes(key))
+          ) {
+            throw new ArchitectureDomainError(
+              'HUMAN_ACTION_REQUIRED',
+              'The requested fields are outside agent edit authority.',
+            );
+          }
+        };
         const commit = (
           architecture: Architecture,
           actor: Actor,
@@ -292,6 +344,7 @@ export function createArchitectureStore(
           summary: string,
           details?: JsonObject,
         ) => {
+          requireAgentPermission(actor);
           const nextArchitecture = validateArchitecture(architecture);
           set((state) => ({
             architecture: nextArchitecture,
@@ -315,6 +368,7 @@ export function createArchitectureStore(
           persistenceRecoveryNotice: null,
 
           createArchitecture: (input, actor = 'human') => {
+            requireHuman(actor);
             const architecture = createEmptyArchitecture(input);
             return commit(
               architecture,
@@ -326,6 +380,7 @@ export function createArchitectureStore(
           },
 
           loadArchitecture: (value, actor = 'human') => {
+            requireHuman(actor);
             const architecture = validateArchitecture(value);
             return commit(
               cloneArchitecture(architecture),
@@ -337,6 +392,16 @@ export function createArchitectureStore(
           },
 
           addComponent: (input, actor = 'human') => {
+            requireAgentFields(actor, input, [
+              'kind',
+              'name',
+              'region',
+              'availabilityZones',
+              'replicas',
+              'critical',
+              'configuration',
+              'position',
+            ]);
             const current = get().architecture;
             const componentId = input.id;
 
@@ -376,6 +441,14 @@ export function createArchitectureStore(
           },
 
           updateComponent: (componentId, changes, actor = 'human') => {
+            requireAgentFields(actor, changes, [
+              'name',
+              'region',
+              'availabilityZones',
+              'replicas',
+              'critical',
+              'configuration',
+            ]);
             const current = get().architecture;
             const component = requireUnlockedComponent(current, componentId);
             let updatedComponent: ArchitectureComponent;
@@ -413,6 +486,7 @@ export function createArchitectureStore(
           },
 
           removeComponent: (componentId, actor = 'human') => {
+            requireAgentPermission(actor);
             const current = get().architecture;
             const component = requireUnlockedComponent(current, componentId);
             const removedConnections = current.connections.filter(
@@ -441,6 +515,13 @@ export function createArchitectureStore(
           },
 
           connectComponents: (input, actor = 'human') => {
+            requireAgentFields(actor, input, [
+              'source',
+              'target',
+              'type',
+              'protocol',
+              'encrypted',
+            ]);
             const current = get().architecture;
             requireComponent(current, input.source);
             requireComponent(current, input.target);
@@ -494,6 +575,7 @@ export function createArchitectureStore(
           },
 
           updateConnection: (connectionId, changes, actor = 'human') => {
+            requireHuman(actor);
             const current = get().architecture;
             const connection = current.connections.find(
               (candidate) => candidate.id === connectionId,
@@ -528,6 +610,7 @@ export function createArchitectureStore(
           },
 
           disconnectComponents: (connectionId, actor = 'human') => {
+            requireAgentPermission(actor);
             const current = get().architecture;
             const connection = current.connections.find(
               (candidate) => candidate.id === connectionId,
@@ -556,6 +639,7 @@ export function createArchitectureStore(
           },
 
           setConstraints: (constraints, actor = 'human') => {
+            requireHuman(actor);
             const current = get().architecture;
             const nextConstraints = {
               ...current.constraints,
@@ -574,6 +658,7 @@ export function createArchitectureStore(
           },
 
           lockComponent: (componentId, actor = 'human') => {
+            requireHuman(actor);
             const current = get().architecture;
             const component = requireComponent(current, componentId);
             if (component.locked) {
@@ -596,6 +681,7 @@ export function createArchitectureStore(
           },
 
           unlockComponent: (componentId, actor = 'human') => {
+            requireHuman(actor);
             const current = get().architecture;
             const component = requireComponent(current, componentId);
             if (!component.locked) {
@@ -618,6 +704,7 @@ export function createArchitectureStore(
           },
 
           moveComponent: (componentId, position, actor = 'human') => {
+            requireHuman(actor);
             const current = get().architecture;
             const component = requireComponent(current, componentId);
             const updatedComponent = { ...component, position };
@@ -642,6 +729,7 @@ export function createArchitectureStore(
           },
 
           renameArchitecture: (name, actor = 'human') => {
+            requireHuman(actor);
             const current = get().architecture;
             const next = withIncrementedRevision(current, { name });
             commit(
@@ -657,6 +745,7 @@ export function createArchitectureStore(
             templateId = DEFAULT_ARCHITECTURE_TEMPLATE_ID,
             actor = 'human',
           ) => {
+            requireHuman(actor);
             const architecture = getArchitectureTemplate(templateId);
             return commit(
               architecture,
@@ -697,6 +786,7 @@ export function createArchitectureStore(
             set({ persistenceRecoveryNotice: null }),
 
           undo: (actor = 'human') => {
+            requireHuman(actor);
             const state = get();
             const previous = state.past.at(-1);
             if (!previous) {
@@ -721,6 +811,7 @@ export function createArchitectureStore(
           },
 
           redo: (actor = 'human') => {
+            requireHuman(actor);
             const state = get();
             const nextArchitecture = state.future[0];
             if (!nextArchitecture) {
@@ -774,4 +865,13 @@ export function createArchitectureStore(
   );
 }
 
-export const useArchitectureStore = createArchitectureStore();
+export const useArchitectureStore = createArchitectureStore({
+  isAgentEditingEnabled: () => {
+    const state = useWebMcpStore.getState();
+    return (
+      state.status === 'ready' &&
+      state.mode === 'edit' &&
+      state.editRegistrationStatus === 'ready'
+    );
+  },
+});

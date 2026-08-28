@@ -13,6 +13,38 @@ import {
 import { getArchitectureTemplate } from '../../src/templates';
 
 describe('architecture serialization', () => {
+  it.each(['__proto__', 'constructor', 'prototype'])(
+    'rejects reserved %s keys in imported metadata without pollution',
+    (key) => {
+      const architecture = getArchitectureTemplate('ecommerce-production');
+      const serialized = JSON.stringify({
+        ...architecture,
+        metadata: JSON.parse(`{"${key}":{"polluted":true}}`) as unknown,
+      });
+      expect(() => deserializeArchitecture(serialized)).toThrowError(
+        expect.objectContaining({ code: 'INVALID_ARCHITECTURE' }),
+      );
+      expect(Object.prototype).not.toHaveProperty('polluted');
+    },
+  );
+
+  it('rejects oversized and excessively nested imports before recursive schema parsing', () => {
+    expect(() => deserializeArchitecture(' '.repeat(4_000_001))).toThrowError(
+      expect.objectContaining({ code: 'INVALID_ARCHITECTURE' }),
+    );
+    const architecture = getArchitectureTemplate('ecommerce-production');
+    let metadata: Record<string, unknown> = { value: 'too deep' };
+    for (let i = 0; i < 30; i += 1) metadata = { child: metadata };
+    expect(() =>
+      deserializeArchitecture(JSON.stringify({ ...architecture, metadata })),
+    ).toThrowError(expect.objectContaining({ code: 'INVALID_ARCHITECTURE' }));
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    expect(() =>
+      validateArchitecture({ ...architecture, metadata: circular }),
+    ).toThrowError(expect.objectContaining({ code: 'INVALID_ARCHITECTURE' }));
+  });
+
   it('round-trips a schema-versioned Architecture IR', () => {
     const architecture = getArchitectureTemplate('ecommerce-production');
     const serialized = serializeArchitecture(architecture);

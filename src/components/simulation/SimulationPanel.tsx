@@ -239,8 +239,9 @@ export function SimulationPanel() {
                 aria-hidden="true"
               />
               <p className="text-[10px] leading-4 text-slate-600">
-                Simulation is a transient graph projection. Architecture state,
-                persistence, and undo history are unchanged.
+                Simulation is a transient graph projection. Architecture and
+                undo history are unchanged. Agent runs add a saved activity
+                entry.
               </p>
             </div>
           </div>

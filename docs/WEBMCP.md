@@ -18,7 +18,7 @@ Aborting the registration signal unregisters the tool. AetherSketch does not inv
 
 ## Review Mode
 
-Review Mode is the default. Exactly four tools are registered and all four are read-only:
+Review Mode is the default. Exactly four tools are registered and none changes Architecture IR. Analysis and simulation do change presentation and activity; their `readOnlyHint` is therefore false under the current specification.
 
 ### `get_architecture`
 
@@ -32,7 +32,7 @@ Input schema:
 }
 ```
 
-Returns the current architecture identity and revision, provider and region, human-authored constraints, compact components and semantic connections, locked component IDs, and current analysis metrics when available. It deliberately omits Zustand internals, activity/history, metadata, XYFlow objects, and component positions.
+Returns the current architecture identity and revision, provider and region, allowlisted human constraints (not free-form notes), compact components and semantic connections, locked component IDs, and current analysis metrics when available. It deliberately omits Zustand internals, activity/history, metadata, free-form notes, account references, XYFlow objects, and component positions.
 
 Metrics are marked `current`, `stale`, or `unavailable`. Stale analysis is never presented as current.
 
@@ -94,7 +94,7 @@ Input schema:
 }
 ```
 
-Runs the same non-mutating simulation action used by the human UI. It returns status, failed and degraded component IDs and counts, impacted edge IDs, surviving component count, critical-path reachability, explanation, and bounded findings. It opens the Simulation panel and activates the failed/degraded canvas overlay without changing Architecture IR, persistence, activity, or undo history.
+Runs the same non-mutating simulation action used by the human UI. It returns status, failed and degraded component IDs and counts, impacted edge IDs, surviving component count, critical-path reachability, explanation, and bounded findings. It opens the Simulation panel and activates the failed/degraded canvas overlay without changing Architecture IR or undo history. Its Agent activity entry is persisted; the simulation projection itself is transient.
 
 An unsupported target returns `INVALID_FAILURE_TARGET`.
 
@@ -153,20 +153,33 @@ type ToolResult<T> =
 
 Zod validates callback inputs as a defense-in-depth boundary in addition to the registered JSON Schema. Unknown or additional input properties produce `INVALID_INPUT`. Kind-incompatible configuration produces `INVALID_CONFIGURATION`. Domain errors preserve actionable codes such as `COMPONENT_LOCKED`, `COMPONENT_NOT_FOUND`, `EDGE_NOT_FOUND`, `INVALID_CONNECTION`, `INVALID_FAILURE_TARGET`, and `INVALID_ARCHITECTURE`. Invocation cancellation produces `EXECUTION_ABORTED`.
 
-A retained reference to a mutation tool cannot bypass authorization: tool execution checks Edit Mode before input parsing, yields once, and checks Edit Mode again immediately before the synchronous domain action. If the human disables editing while a call is in flight, it returns `EDIT_MODE_DISABLED` and performs no mutation.
+A retained reference to a mutation tool cannot bypass authorization: registration wrappers reject callbacks after disposal, and a later edit session cannot revive them. In addition, tool execution checks Edit Mode before input parsing, yields once, and checks Edit Mode again immediately before the synchronous domain action. If the human disables editing while a call is in flight, it returns `EDIT_MODE_DISABLED` and performs no mutation.
 
-The four read tools declare:
+## Tool contract
 
-```json
-{
-  "readOnlyHint": true,
-  "untrustedContentHint": false
-}
-```
+Verified 28 August 2026 against the [26 August draft](https://webmachinelearning.github.io/webmcp/), installed `webmcp-types@0.1.5`, and [Chrome tool security guidance](https://developer.chrome.com/docs/ai/webmcp/secure-tools).
 
-Analysis and simulation update transient presentation state, but they do not mutate the Architecture IR, so they remain read-only in the architectural sense. Outputs come from validated application state rather than external or user-controlled web content.
+| Tool                    | Available     | IR access | readOnlyHint | untrustedContentHint | Returned untrusted fields / side effects                                            |
+| ----------------------- | ------------- | --------- | ------------ | -------------------- | ----------------------------------------------------------------------------------- |
+| `get_architecture`      | Review + Edit | Read      | true         | true                 | Imported names, IDs, service/region/protocol labels; no notes or account references |
+| `inspect_component`     | Review + Edit | Read      | true         | true                 | Component name, configuration strings and relationships                             |
+| `analyze_architecture`  | Review + Edit | Read      | false        | true                 | Findings can interpolate names; opens panel and records activity                    |
+| `simulate_failure`      | Review + Edit | Read      | false        | true                 | Target, IDs and interpolated findings; overlay and activity                         |
+| `add_component`         | Edit only     | Write     | false        | true                 | Echoes the new component name/configuration; selects component                      |
+| `update_component`      | Edit only     | Write     | false        | true                 | Echoes existing/imported component fields; selects component                        |
+| `remove_component`      | Edit only     | Write     | false        | true                 | Echoes removed component name/ID; clears selection                                  |
+| `connect_components`    | Edit only     | Write     | false        | true                 | Endpoint IDs and protocol may be user-authored; selects edge                        |
+| `disconnect_components` | Edit only     | Write     | false        | true                 | Echoes removed edge IDs/protocol; clears selection                                  |
 
-The five mutation tools declare `readOnlyHint: false` and `untrustedContentHint: false`.
+All five edit operations record Agent activity, mark analysis stale and clear the active simulation. The term “Review tools” describes architecture authority, not an absence of presentation side effects. `readOnlyHint` follows the stricter API definition. Each untrusted hint is justified by actual user/imported fields in that response; numeric scores and internal result codes remain deterministic. An annotation does not authorize an action or neutralize prompt injection.
+
+### Bounded validation and disclosure
+
+JSON Schema descriptors use strict objects. Add-component schemas include conditional kind-specific configuration fields; update schemas advertise the possible typed configurations, with the actual kind checked at execution. Runtime Zod and domain validation remain authoritative. Early JSON traversal rejects reserved pollution keys, accessors, cycles and oversized/deep values before recursive schemas run. Tool inputs have a 16,384-character traversal budget, depth 8 and 256-value/key budget. Configuration strings are at most 240 characters; patches accept at most 16 fields.
+
+Validation errors expose at most eight bounded issues. Unexpected exception details are replaced by `INTERNAL_ERROR` with recovery guidance. Revoked descriptors return `TOOL_UNAVAILABLE`; live descriptors called without edit authority return `EDIT_MODE_DISABLED`. Human-only domain operations return `HUMAN_ACTION_REQUIRED`.
+
+Graph output scales with the validated graph, not metadata or history. It includes the complete graph so agents do not silently reason over missing edges. Analysis findings are capped at 100 and simulation findings at 50, with truncation flags/counts. The Chrome 1.5K-character output recommendation is advisory and is exceeded by complete graph and detailed analysis responses; the eval report measures actual character counts. Large diagrams remain a context-budget limitation, not an unreported truncation.
 
 ## Hard invariants and soft goals
 
@@ -187,9 +200,9 @@ The application mounts a single WebMCP runtime boundary:
 4. When all registration promises resolve, status becomes **WebMCP Ready · 4 read tools**.
 5. A rejected registration produces **WebMCP Error** and exposes its message in development diagnostics.
 6. When the human enables Agent Edit Mode, a second `AbortController` registers the five mutation descriptors. The UI reports **4 read tools · 5 edit tools** only after all five registrations resolve.
-7. Disabling Agent Edit Mode immediately revokes domain permission and aborts only the edit controller. The five mutation tools disappear, the four read-tool registrations and architecture changes remain, and the UI returns to Review Mode.
+7. Execution and the domain store require ready read/edit registration and current Edit Mode. Disabling Agent Edit Mode immediately revokes domain permission and aborts only the edit controller. The five mutation tools disappear, the four read-tool registrations and architecture changes remain, and the UI returns to Review Mode.
 8. Each new enable cycle creates one new edit controller. Effect cleanup aborts the previous controller, so repeated cycles cannot accumulate duplicate tools.
-9. When the React runtime unmounts, both owning signals are aborted.
+9. When the React runtime unmounts, both owning signals are aborted and edit authorization/checkpoint are cleared.
 
 “Ready” means tools are registered on the page. It does not claim that ChatGPT or another agent is connected.
 
@@ -219,13 +232,15 @@ If the indicator stays **WebMCP Unavailable**, that browser surface does not cur
 
 ## Testing with Chrome's WebMCP mode
 
-Follow the current [Chrome WebMCP setup guidance](https://developer.chrome.com/docs/ai/webmcp):
+As verified on 28 August 2026, [Chrome setup guidance](https://developer.chrome.com/docs/ai/webmcp) documents `chrome://flags/#enable-webmcp-testing` for local development. Enable it and relaunch, then load AetherSketch. Deployment/origin-trial availability is browser-specific; feature detection remains required.
 
-1. Open `chrome://flags/#enable-webmcp-testing`, enable it, and relaunch Chrome.
-2. Load the AetherSketch local or deployed page and confirm the Ready status.
-3. For Chrome's experimental built-in WebMCP debugging panel, also enable `chrome://flags/#devtools-webmcp-support`, relaunch, then use the WebMCP section of the DevTools Application panel to inspect schemas, manually invoke tools, and view their results.
+The current official [DevTools guide](https://developer.chrome.com/docs/devtools/application/webmcp) locates the pane at **DevTools → Application → WebMCP** (top level of the Application sidebar). Inspect Available Tools and Invoked Tools, select a tool, enter arguments, and choose **Run tool**. Inspect input/output and completed/canceled/error states. If the pane is absent in a particular build, use the documented Model Context Tool Inspector or AetherSketch's development diagnostics; do not assume an undocumented DevTools flag is required.
 
-The flags and DevTools location can change while WebMCP evolves; defer to the linked current Chrome documentation rather than assuming a browser version.
+The official DevTools guide also documents the `--categoryWebMCP` opt-in for Chrome DevTools MCP. That is a separate developer tool, not an AetherSketch dependency or a substitute API. This project does not register `navigator.modelContext`, `provideContext`, `unregisterTool` or an invented output-schema field.
+
+## Evaluations
+
+See [`../evals/webmcp/README.md`](../evals/webmcp/README.md). `npm run eval:webmcp` replays ten deterministic reference cases; `npm test` includes them. The suite covers discovery, chaining returned IDs, Review denial, locked decisions, failure recovery, budgeted improvement and the final AZ simulation. Model selection/reasoning must be evaluated separately using the documented rubrics and current external tooling. Local reference replay is never reported as an LLM evaluation pass.
 
 ## Current API/type-package notes
 

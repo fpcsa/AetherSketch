@@ -10,6 +10,7 @@ import type {
   ConnectComponentsInput,
 } from '../../architecture/model';
 import { ArchitectureDomainError } from '../../architecture/model';
+import { assertSafeToolInput } from '../schemas/input-safety';
 import {
   type WebMcpToolResult,
   toWebMcpToolError,
@@ -77,7 +78,8 @@ type MutationResult<T> = {
 
 const mutationAnnotations: WebMCP.ToolAnnotations = {
   readOnlyHint: false,
-  untrustedContentHint: false,
+  // Every mutation echoes names, IDs, protocols or configuration from user data.
+  untrustedContentHint: true,
 };
 
 function assertEditMode(isEditModeEnabled: () => boolean): void {
@@ -173,13 +175,14 @@ function createMutationTool<TInput extends Record<string, unknown>, TOutput>(
     inputSchema,
     annotations: mutationAnnotations,
     execute: async (input, options) => {
-      dependencies.reporter?.invocation(name, input);
       try {
         assertEditMode(dependencies.isEditModeEnabled);
         if (options?.signal?.aborted) {
           throw options.signal.reason;
         }
+        assertSafeToolInput(input);
         const data = parser.parse(input);
+        dependencies.reporter?.invocation(name, data);
 
         // Yield once so a human disabling Edit Mode during an in-flight call
         // wins before the synchronous domain mutation begins.

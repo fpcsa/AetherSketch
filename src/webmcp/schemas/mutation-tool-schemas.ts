@@ -19,15 +19,17 @@ const availabilityZonesSchema = z
     message: 'Availability zones must be unique.',
   });
 const configurationValueSchema = z.union([
-  z.string(),
+  z.string().max(240),
   z.number().finite(),
   z.boolean(),
   z.null(),
 ]);
-const configurationPatchSchema = z.record(
-  z.string().trim().min(1).max(128),
-  configurationValueSchema,
-);
+const configurationPatchSchema = z
+  .record(z.string().trim().min(1).max(128), configurationValueSchema)
+  .refine(
+    (value) => Object.keys(value).length <= 16,
+    'At most 16 configuration fields are accepted.',
+  );
 
 export const addComponentInputSchema = z
   .object({
@@ -111,10 +113,11 @@ export function parseConfigurationPatch<K extends ComponentKind>(
         componentId,
         details: {
           kind,
-          issues: result.error.issues.map((issue) => ({
-            path: issue.path.map(String).join('.'),
-            message: issue.message,
+          issues: result.error.issues.slice(0, 8).map((issue) => ({
+            path: issue.path.map(String).join('.').slice(0, 160),
+            message: issue.message.slice(0, 240),
           })),
+          issuesTruncated: result.error.issues.length > 8,
         },
       },
     );
@@ -131,12 +134,39 @@ function toInputJsonSchema(schema: z.ZodType): object {
   return inputSchema;
 }
 
-export const addComponentInputJsonSchema = toInputJsonSchema(
-  addComponentInputSchema,
+const configurationJsonSchemas = Object.fromEntries(
+  Object.entries(configurationSchemasByKind).map(([kind, schema]) => [
+    kind,
+    toInputJsonSchema(schema.partial()),
+  ]),
 );
-export const updateComponentInputJsonSchema = toInputJsonSchema(
-  updateComponentInputSchema,
-);
+
+export const addComponentInputJsonSchema = {
+  ...toInputJsonSchema(addComponentInputSchema),
+  allOf: componentKinds.map((kind) => ({
+    if: { properties: { kind: { const: kind } }, required: ['kind'] },
+    then: { properties: { configuration: configurationJsonSchemas[kind] } },
+  })),
+};
+const updateJsonSchema = z.toJSONSchema(updateComponentInputSchema, {
+  target: 'draft-7',
+});
+delete updateJsonSchema.$schema;
+const changesJsonSchema = updateJsonSchema.properties!.changes as Record<
+  string,
+  unknown
+>;
+changesJsonSchema.minProperties = 1;
+const changesProperties = changesJsonSchema.properties as Record<
+  string,
+  unknown
+>;
+changesProperties.configuration = {
+  description:
+    'Partial configuration for the existing kind; inspect_component returns current keys and values.',
+  anyOf: Object.values(configurationJsonSchemas),
+};
+export const updateComponentInputJsonSchema = updateJsonSchema;
 export const removeComponentInputJsonSchema = toInputJsonSchema(
   removeComponentInputSchema,
 );

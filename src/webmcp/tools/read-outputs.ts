@@ -52,9 +52,19 @@ export function compactArchitecture(
     id: architecture.id,
     name: architecture.name,
     revision: architecture.revision,
-    provider: architecture.provider,
+    provider: {
+      provider: architecture.provider.provider,
+      environment: architecture.provider.environment,
+    },
     region: architecture.region,
-    constraints: architecture.constraints,
+    constraints: {
+      maximumMonthlyCost: architecture.constraints.maximumMonthlyCost,
+      targetResilienceScore: architecture.constraints.targetResilienceScore,
+      targetSecurityScore: architecture.constraints.targetSecurityScore,
+      requiredRegion: architecture.constraints.requiredRegion,
+      requireMultiAZ: architecture.constraints.requireMultiAZ,
+      requireEncryptionAtRest: architecture.constraints.requireEncryptionAtRest,
+    },
     components: architecture.components.map((component) => ({
       id: component.id,
       name: component.name,

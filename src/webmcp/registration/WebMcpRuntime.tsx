@@ -158,6 +158,7 @@ export function WebMcpRuntime() {
     return () => {
       cancelled = true;
       controller.abort();
+      useWebMcpStore.getState().resetAgentSession();
     };
   }, []);
 
@@ -176,7 +177,15 @@ export function WebMcpRuntime() {
     const controller = new AbortController();
     let cancelled = false;
     const tools = createWebMcpMutationTools({
-      isEditModeEnabled: () => useWebMcpStore.getState().mode === 'edit',
+      isEditModeEnabled: () => {
+        const state = useWebMcpStore.getState();
+        return (
+          !controller.signal.aborted &&
+          state.status === 'ready' &&
+          state.mode === 'edit' &&
+          state.editRegistrationStatus === 'ready'
+        );
+      },
       getArchitecture: () => useArchitectureStore.getState().architecture,
       addComponent: (input) =>
         useArchitectureStore.getState().addComponent(input, 'agent'),

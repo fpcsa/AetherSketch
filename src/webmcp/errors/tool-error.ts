@@ -7,6 +7,8 @@ export type WebMcpErrorCode =
   | 'EXECUTION_ABORTED'
   | 'INTERNAL_ERROR'
   | 'EDIT_MODE_DISABLED'
+  | 'HUMAN_ACTION_REQUIRED'
+  | 'TOOL_UNAVAILABLE'
   | 'COMPONENT_LOCKED'
   | 'COMPONENT_NOT_FOUND'
   | 'EDGE_NOT_FOUND'
@@ -74,10 +76,11 @@ export function toWebMcpToolError(
       code: 'INVALID_INPUT',
       message: 'Tool input does not match the required schema.',
       details: {
-        issues: error.issues.map((issue) => ({
-          path: issue.path.map(String).join('.'),
-          message: issue.message,
+        issues: error.issues.slice(0, 8).map((issue) => ({
+          path: issue.path.map(String).join('.').slice(0, 160),
+          message: issue.message.slice(0, 240),
         })),
+        issuesTruncated: error.issues.length > 8,
       },
     };
   }
@@ -105,8 +108,6 @@ export function toWebMcpToolError(
   return {
     code: 'INTERNAL_ERROR',
     message:
-      error instanceof Error
-        ? error.message
-        : 'The WebMCP tool could not complete.',
+      'The WebMCP tool could not complete. Retry or ask the human to inspect the workspace.',
   };
 }

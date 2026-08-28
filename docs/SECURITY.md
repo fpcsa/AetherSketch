@@ -1,5 +1,7 @@
 # Security and authority model
 
+The repository-level [SECURITY.md](../SECURITY.md) documents the threat model, imported data, prompt injection, limits and disclosure policy. This document focuses on authority flow.
+
 ## Purpose
 
 AetherSketch treats agent editing as temporary delegated authority, not as implicit ownership of the workspace. The browser page remains the policy and validation boundary; ChatGPT is the copilot, and no embedded LLM or backend inference service exists.
@@ -52,7 +54,7 @@ Mutation tool registered
   → Validated IR commit with actor="agent"
 ```
 
-Every layer is intentional defense in depth. Dynamic tool removal limits discoverable capability, while the execution-time permission check prevents a cached tool reference or in-flight call from bypassing a human disable. The domain store independently enforces component locks for update and removal.
+Every layer is intentional defense in depth. Dynamic tool removal limits discoverable capability, while the execution-time permission check prevents a cached tool reference or in-flight call from bypassing a human disable. The domain store independently enforces ready edit permission, allowlisted agent fields, human-only controls, and component locks for update and removal. Retired registration callbacks remain revoked after a new session begins.
 
 ## Registration lifecycle
 
@@ -73,6 +75,8 @@ Hard invariants always fail closed: disabled edit permission, locks, malformed o
 Expected failures use machine-recoverable codes, including:
 
 - `EDIT_MODE_DISABLED`
+- `TOOL_UNAVAILABLE`
+- `HUMAN_ACTION_REQUIRED`
 - `COMPONENT_LOCKED`
 - `COMPONENT_NOT_FOUND`
 - `EDGE_NOT_FOUND`

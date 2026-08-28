@@ -13,7 +13,23 @@ export async function registerWebMcpTools(
   try {
     await Promise.all(
       tools.map((tool) =>
-        context.registerTool(tool, { signal: controller.signal }),
+        context.registerTool(
+          {
+            ...tool,
+            execute: (input, options) =>
+              controller.signal.aborted
+                ? {
+                    ok: false,
+                    error: {
+                      code: 'TOOL_UNAVAILABLE',
+                      message:
+                        'This tool registration has ended. Rediscover the currently available tools.',
+                    },
+                  }
+                : tool.execute(input, options),
+          },
+          { signal: controller.signal },
+        ),
       ),
     );
   } catch (error) {

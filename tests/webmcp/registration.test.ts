@@ -19,6 +19,34 @@ function testTools(): WebMCP.ModelContextTool[] {
 }
 
 describe('WebMCP registration boundary', () => {
+  it('handles a denied API getter as unsupported', () => {
+    const blockedDocument = Object.defineProperty({}, 'modelContext', {
+      get() {
+        throw new DOMException('Denied', 'SecurityError');
+      },
+    });
+    expect(getDocumentModelContext(blockedDocument as Document)).toBeNull();
+  });
+
+  it('makes retained callbacks unusable after their owning registration is disposed', async () => {
+    let registered: WebMCP.ModelContextTool | undefined;
+    const execute = vi.fn(() => ({ ok: true }));
+    const registration = await registerWebMcpTools(
+      {
+        registerTool: (tool) => {
+          registered = tool;
+          return Promise.resolve();
+        },
+      },
+      [{ name: 'get_architecture', description: 'Read architecture', execute }],
+    );
+    registration.dispose();
+    expect(
+      await registered!.execute({}, { signal: new AbortController().signal }),
+    ).toMatchObject({ ok: false, error: { code: 'TOOL_UNAVAILABLE' } });
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it('requires the actual imperative registerTool API for feature detection', () => {
     const registerTool = vi.fn().mockResolvedValue(undefined);
     const supportedDocument = {

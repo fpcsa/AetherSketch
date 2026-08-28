@@ -138,7 +138,7 @@ Review Mode is the default and exposes no mutation capability. A human can enabl
 
 WebMCP is a progressive enhancement: “Ready” means tools are registered on the current page, never that an agent is connected. Unsupported browsers show “Unavailable” while retaining the full human workspace. No extension, MCP server, embedded chatbot, or compatibility API is required by AetherSketch.
 
-See [docs/WEBMCP.md](docs/WEBMCP.md) for exact behavior, lifecycle details, and testing instructions, and [docs/SECURITY.md](docs/SECURITY.md) for the authority and guardrail model.
+See [docs/WEBMCP.md](docs/WEBMCP.md) for exact behavior, lifecycle details, and testing instructions, [SECURITY.md](SECURITY.md) for the threat model, and [evals/webmcp/README.md](evals/webmcp/README.md) for deterministic evals and manual agent evaluation.
 
 ## Technology stack
 

@@ -29,8 +29,9 @@ function createPersistStorage(storage: StateStorage) {
   return createJSONStorage<PersistedArchitectureState>(() => storage)!;
 }
 
-function createTestStore() {
+function createTestStore(isAgentEditingEnabled = () => false) {
   return createArchitectureStore({
+    isAgentEditingEnabled,
     initialArchitecture: getArchitectureTemplate('ecommerce-production'),
     storage: createPersistStorage(createMemoryStorage()),
     skipHydration: true,
@@ -38,6 +39,77 @@ function createTestStore() {
 }
 
 describe('architecture store mutations', () => {
+  it('enforces agent permission at the domain boundary, including after revocation', () => {
+    let enabled = false;
+    const store = createTestStore(() => enabled);
+    const operations = [
+      () => store.getState().addComponent({ kind: 'queue' }, 'agent'),
+      () =>
+        store
+          .getState()
+          .updateComponent('ecommerce-ecs', { replicas: 2 }, 'agent'),
+      () => store.getState().removeComponent('ecommerce-ecs', 'agent'),
+      () =>
+        store.getState().connectComponents(
+          {
+            source: 'ecommerce-internet',
+            target: 'ecommerce-ecs',
+            type: 'request',
+          },
+          'agent',
+        ),
+      () => store.getState().disconnectComponents('ecommerce-edge-1', 'agent'),
+    ];
+    const before = store.getState();
+    for (const run of operations)
+      expect(run).toThrowError(
+        expect.objectContaining({ code: 'EDIT_MODE_DISABLED' }),
+      );
+    expect(store.getState()).toBe(before);
+    enabled = true;
+    store.getState().addComponent({ kind: 'queue' }, 'agent');
+    enabled = false;
+    const revoked = store.getState();
+    for (const run of operations)
+      expect(run).toThrowError(
+        expect.objectContaining({ code: 'EDIT_MODE_DISABLED' }),
+      );
+    expect(store.getState()).toBe(revoked);
+  });
+
+  it('keeps human controls and protected fields out of agent domain authority', () => {
+    const store = createTestStore(() => true);
+    const state = store.getState();
+    for (const run of [
+      () => state.lockComponent('ecommerce-postgresql', 'agent'),
+      () => state.unlockComponent('ecommerce-postgresql', 'agent'),
+      () => state.setConstraints({ maximumMonthlyCost: 1 }, 'agent'),
+      () => state.loadArchitecture(state.architecture, 'agent'),
+      () => state.resetArchitecture('serverless-api', 'agent'),
+      () => state.undo('agent'),
+      () => state.redo('agent'),
+      () => state.renameArchitecture('Unauthorized', 'agent'),
+      () => state.moveComponent('ecommerce-ecs', { x: 10, y: 10 }, 'agent'),
+      () =>
+        state.updateConnection(
+          'ecommerce-edge-1',
+          { encrypted: false },
+          'agent',
+        ),
+      () =>
+        state.updateComponent(
+          'ecommerce-ecs',
+          { metadata: { injected: true } },
+          'agent',
+        ),
+      () => state.addComponent({ kind: 'queue', id: 'chosen-id' }, 'agent'),
+    ])
+      expect(run).toThrowError(
+        expect.objectContaining({ code: 'HUMAN_ACTION_REQUIRED' }),
+      );
+    expect(store.getState()).toBe(state);
+  });
+
   it('creates and loads validated architectures without corrupting state on failure', () => {
     const store = createTestStore();
     const created = store.getState().createArchitecture(
@@ -265,11 +337,10 @@ describe('architecture history and activity', () => {
   });
 
   it('records the actor and action for every mutation', () => {
-    const store = createTestStore();
+    const store = createTestStore(() => true);
 
-    store.getState().addComponent(
+    const added = store.getState().addComponent(
       {
-        id: 'agent-queue',
         kind: 'queue',
         name: 'Agent Queue',
       },
@@ -280,7 +351,7 @@ describe('architecture history and activity', () => {
       actor: 'agent',
       action: 'component.added',
       summary: 'Added Agent Queue',
-      details: { componentId: 'agent-queue', kind: 'queue' },
+      details: { componentId: added.id, kind: 'queue' },
     });
 
     store.getState().undo('human');
@@ -305,6 +376,41 @@ describe('architecture history and activity', () => {
 });
 
 describe('architecture local persistence', () => {
+  it('recovers from malicious metadata and oversized history without overwriting the saved source', () => {
+    const template = getArchitectureTemplate('ecommerce-production');
+    for (const state of [
+      {
+        architecture: {
+          ...template,
+          metadata: JSON.parse('{"__proto__":{"polluted":true}}') as unknown,
+        },
+        activity: [],
+        past: [],
+        future: [],
+      },
+      {
+        architecture: template,
+        activity: [],
+        past: Array.from({ length: 101 }, () => template),
+        future: [],
+      },
+    ]) {
+      const memory = createMemoryStorage();
+      const saved = JSON.stringify({ version: 1, state });
+      memory.setItem(ARCHITECTURE_STORAGE_KEY, saved);
+      const store = createArchitectureStore({
+        storage: createPersistStorage(memory),
+      });
+      expect(store.persist.hasHydrated()).toBe(true);
+      expect(store.getState().persistenceRecoveryNotice).toContain(
+        'restored safely',
+      );
+      expect(store.getState().past).toEqual([]);
+      expect(memory.getItem(ARCHITECTURE_STORAGE_KEY)).toBe(saved);
+    }
+    expect(Object.prototype).not.toHaveProperty('polluted');
+  });
+
   it('rehydrates the current project from the versioned storage key', () => {
     const memoryStorage = createMemoryStorage();
     const storage = createPersistStorage(memoryStorage);

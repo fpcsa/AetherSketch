@@ -52,6 +52,9 @@ describe('hackathon WebMCP status variants', () => {
     expect(screen.getByText('WebMCP Ready')).toBeVisible();
     expect(screen.getByText('Review')).toBeVisible();
     expect(screen.getByText('4 tools')).toBeVisible();
+    expect(
+      screen.getByTitle(/Four Review tools.*not architecture/),
+    ).toBeVisible();
     expect(screen.queryByText(/connected/i)).toBeNull();
 
     act(() => {
@@ -80,6 +83,9 @@ describe('hackathon WebMCP status variants', () => {
     });
     expect(screen.getByText('Agent Edit')).toBeVisible();
     expect(screen.getByText('9 tools')).toBeVisible();
+    expect(
+      screen.getByTitle(/4 Review tools and 5 edit tools.*modify unlocked/),
+    ).toBeVisible();
   });
 
   it('makes failed edit-tool registration visible outside diagnostics', () => {
@@ -108,7 +114,7 @@ describe('hackathon WebMCP status variants', () => {
     expect(screen.queryByText('Agent Edit')).toBeNull();
     expect(
       screen.getAllByTitle(
-        /Edit-tool registration failed.*read-only tools remain available/,
+        /Edit-tool registration failed.*Review tools remain available/,
       ),
     ).toHaveLength(2);
     expect(

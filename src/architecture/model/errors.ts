@@ -1,6 +1,8 @@
 import type { JsonObject } from './types';
 
 export type ArchitectureErrorCode =
+  | 'EDIT_MODE_DISABLED'
+  | 'HUMAN_ACTION_REQUIRED'
   | 'COMPONENT_LOCKED'
   | 'COMPONENT_NOT_FOUND'
   | 'EDGE_NOT_FOUND'
