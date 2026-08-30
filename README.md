@@ -6,6 +6,10 @@ AetherSketch gives a human and a browser agent one shared cloud architecture to 
 
 The app does not embed a chatbot, call an LLM API, or access cloud accounts. No OpenAI key, AWS key, or database credentials are needed.
 
+**[Open the deployed app](https://aethersketch.projects-engineering.workers.dev)** · [Three-minute demo](docs/DEMO.md) · [Tool contracts](docs/WEBMCP.md) · [Final audit](docs/SUBMISSION-AUDIT.md) · [License](LICENSE)
+
+**First 30 seconds:** the Ecommerce cloud architecture is already loaded. The bottom bar shows estimated cost and modeled resilience/security. WebMCP starts in **Review · 4 tools**, with no graph-edit authority. Open **Explore WebMCP tools** beside the status to see the live registry and permissions. Humans and agents operate on the same graph.
+
 ## What it does
 
 Draw a system, set a budget and resilience target, protect important decisions, and ask an agent to improve it. Compare the result with the human-approved starting point, then simulate an availability-zone outage. The same deterministic Architecture IR powers the canvas, tools, analysis, and comparison.
@@ -123,6 +127,8 @@ The [official DevTools pane](https://developer.chrome.com/docs/devtools/applicat
 
 The app's bug-icon diagnostics show mode, registration groups, and the last invocation/result in development. They are excluded from production builds.
 
+The **Explore WebMCP tools** directory is available in production. It shows which tools are currently registered, their effects, human authority, and the last structured tool error. Analysis and simulation change presentation/activity only. Open the directory again after toggling editing to observe **4 → 9 → 4** registrations.
+
 ## Demo scenario
 
 Use the exact [eleven-step demo script](docs/DEMO.md): reset Ecommerce, analyze in Review Mode, lock PostgreSQL, set **$3,000** and **90 resilience**, request an improvement, then authorize edits. The reference redesign preserves the primary, adds an independent replica and supporting services, and survives loss of `eu-west-1a` with degraded capacity.
@@ -147,6 +153,8 @@ Simulation projects graph reachability and modeled redundancy. It does not predi
 ## Security
 
 Tools use strict schemas, bounded input traversal, kind validation, current permission checks, and domain validation. Imported text stays data and is rendered with React escaping. Notes/metadata and UI/history are omitted from graph tool output; remaining returned names and labels are untrusted.
+
+Imports are bounded before file reading (16 MB), then limited to 4,000,000 JSON characters. An import that finishes after a reset, newer import, or architecture edit cannot overwrite that newer work. Repeated connections with the same source, target, and type are rejected across tools, UI, and import validation.
 
 Architecture, history, and activity live in unencrypted localStorage. If storage becomes unavailable/full, the editor continues in memory and warns the user to export before closing. Invalid imports preserve the current project; analysis and render failures offer recovery. Never enter secrets. Read [SECURITY.md](SECURITY.md) and the [authority model](docs/SECURITY.md).
 
@@ -191,7 +199,7 @@ Desktop workspace (minimum 1000×640); dense graphs need zoom and sidebar scroll
 
 ## Roadmap
 
-Potential follow-ups include richer provider pricing assumptions, stronger capacity modeling, accessible keyboard graph editing, and real model-evaluation runs across supported browsers. These are not implemented features or promises of current behavior.
+Keyboard users can Tab to nodes/edges, press Enter or Space to inspect, and move selected nodes with arrow keys (Shift for a larger step); moves share IR and undo history. Escape closes focused panels and returns focus to their opener. Creating connections still requires pointer interaction. Potential follow-ups include richer provider pricing assumptions, stronger capacity modeling, fully keyboard-driven connection creation, and real model-evaluation runs across supported browsers. These are not implemented features or promises of current behavior.
 
 ## License
 

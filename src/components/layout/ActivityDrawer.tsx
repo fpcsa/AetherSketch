@@ -3,6 +3,7 @@ import { Braces, Settings, UserRound, X } from 'lucide-react';
 import type { Actor } from '../../architecture/model';
 import { useArchitectureStore } from '../../stores/architecture-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
+import { usePanelFocus } from './use-panel-focus';
 
 const actorVisuals = {
   human: {
@@ -37,6 +38,7 @@ export function ActivityDrawer() {
   const open = useWorkspaceUiStore((state) => state.activityOpen);
   const setOpen = useWorkspaceUiStore((state) => state.setActivityOpen);
   const activity = useArchitectureStore((state) => state.activity);
+  const panelRef = usePanelFocus(open, () => setOpen(false));
 
   if (!open) {
     return null;
@@ -51,7 +53,8 @@ export function ActivityDrawer() {
         aria-label="Close activity history"
       />
       <aside
-        className="absolute bottom-16 right-3 top-16 z-40 flex w-[340px] flex-col border border-slate-700 bg-[#0c1118] shadow-2xl shadow-black/60"
+        ref={panelRef}
+        className="absolute bottom-16 right-3 top-16 z-40 flex w-[340px] flex-col border border-slate-700 bg-[#0c1118] shadow-2xl shadow-black/60 max-[1280px]:top-28"
         aria-labelledby="activity-title"
       >
         <div className="flex h-10 shrink-0 items-center border-b border-slate-800 px-3">
@@ -97,7 +100,7 @@ export function ActivityDrawer() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start gap-2">
-                        <p className="min-w-0 flex-1 text-[12px] leading-4 text-slate-300">
+                        <p className="min-w-0 flex-1 break-words text-[12px] leading-4 text-slate-300">
                           {entry.summary}
                         </p>
                         {entry.action === 'webmcp.action.blocked' ? (

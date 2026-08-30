@@ -119,10 +119,7 @@
   stroke-dasharray: 5 4;
 }
 
-.react-flow__attribution {
-  display: none;
-}
-
+html[data-theme='dark'] [class~='text-slate-500'],
 html[data-theme='dark'] [class~='text-slate-600'],
 html[data-theme='dark'] [class~='text-slate-700'] {
   color: #94a3b8;

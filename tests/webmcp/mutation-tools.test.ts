@@ -101,6 +101,29 @@ async function execute<T>(
 }
 
 describe('WebMCP mutation tools', () => {
+  it('rejects a duplicate semantic edge without changing graph, history or simulation', async () => {
+    const { tools, architectureStore, intelligenceStore } = createHarness();
+    intelligenceStore
+      .getState()
+      .runSimulation({ scope: 'availability-zone', target: 'eu-west-1a' });
+    const before = architectureStore.getState();
+    const overlay = intelligenceStore.getState().simulation;
+    const result = await execute(toolNamed(tools, 'connect_components'), {
+      sourceComponentId: 'ecommerce-internet',
+      targetComponentId: 'ecommerce-cloudfront',
+      type: 'request',
+      protocol: 'HTTP',
+      encrypted: false,
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: 'INVALID_CONNECTION' },
+    });
+    expect(architectureStore.getState().architecture).toBe(before.architecture);
+    expect(architectureStore.getState().past).toBe(before.past);
+    expect(intelligenceStore.getState().simulation).toBe(overlay);
+    intelligenceStore.getState().dispose();
+  });
   it('edits typed network routes and attachments, protects references and locks, and preserves undo', async () => {
     const { tools, architectureStore, intelligenceStore } = createHarness();
     architectureStore

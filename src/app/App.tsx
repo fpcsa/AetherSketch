@@ -32,7 +32,11 @@ export function App() {
 
       <div className="grid min-h-0 flex-1 grid-cols-[220px_minmax(0,1fr)_344px] overflow-hidden max-[1180px]:grid-cols-[204px_minmax(0,1fr)_320px]">
         <ComponentPalette />
-        <main id="architecture-canvas" className="min-w-0 bg-[#090d13]">
+        <main
+          id="architecture-canvas"
+          tabIndex={-1}
+          className="min-w-0 bg-[#090d13]"
+        >
           <RenderErrorBoundary>
             <ArchitectureCanvas />
           </RenderErrorBoundary>

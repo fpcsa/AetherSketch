@@ -2,6 +2,7 @@ import { Check, Clipboard, MessageSquareText, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
+import { usePanelFocus } from './use-panel-focus';
 
 const demoPrompts = [
   'Analyze this architecture for production readiness. Do not modify anything.',
@@ -12,6 +13,7 @@ const demoPrompts = [
 export function DemoPrompts() {
   const [open, setOpen] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const panelRef = usePanelFocus(open, () => setOpen(false));
   const setNotice = useWorkspaceUiStore((state) => state.setNotice);
 
   const copyPrompt = async (prompt: string, index: number) => {
@@ -49,8 +51,9 @@ export function DemoPrompts() {
 
       {open ? (
         <section
+          ref={panelRef}
           id="demo-prompts-popover"
-          className="absolute right-0 top-10 z-50 w-[min(25rem,calc(100vw-2rem))] whitespace-normal border border-slate-700 bg-[#0c1118] p-3 shadow-2xl shadow-black/60"
+          className="fixed right-3 top-16 z-50 max-h-[calc(100dvh-9rem)] w-[min(25rem,calc(100vw-2rem))] overflow-auto whitespace-normal border border-slate-700 bg-[#0c1118] p-3 shadow-2xl shadow-black/60 max-[1280px]:top-28"
           aria-label="Suggested demo prompts"
         >
           <div className="mb-3 flex items-start gap-2">

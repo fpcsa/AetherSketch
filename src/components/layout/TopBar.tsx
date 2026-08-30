@@ -16,6 +16,7 @@ import {
   serializeArchitecture,
 } from '../../architecture/serialization';
 import { isArchitectureDomainError } from '../../architecture/model';
+import { ARCHITECTURE_JSON_LIMITS } from '../../architecture/model/json-safety';
 import {
   architectureTemplateIds,
   type ArchitectureTemplateId,
@@ -76,6 +77,7 @@ function describeImportError(error: unknown): string {
 
 export function TopBar() {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const importRequestRef = useRef(0);
   const architecture = useArchitectureStore((state) => state.architecture);
   const canUndo = useArchitectureStore((state) => state.past.length > 0);
   const canRedo = useArchitectureStore((state) => state.future.length > 0);
@@ -119,6 +121,7 @@ export function TopBar() {
     if (value === 'custom') {
       return;
     }
+    importRequestRef.current += 1;
     if (
       !runWorkspaceAction(() => {
         if (value === 'blank') {
@@ -169,10 +172,35 @@ export function TopBar() {
       return;
     }
 
+    const request = ++importRequestRef.current;
+    const startingArchitecture = useArchitectureStore.getState().architecture;
+    // Bound allocation before reading; UTF-8 can use up to four bytes per character.
+    if (file.size > ARCHITECTURE_JSON_LIMITS.maxCharacters * 4) {
+      setNotice({
+        kind: 'error',
+        message:
+          'File exceeds the 16 MB read limit. The current project was left unchanged.',
+      });
+      return;
+    }
+
     let imported;
     try {
-      imported = deserializeArchitecture(await file.text());
+      const serialized = await file.text();
+      if (request !== importRequestRef.current) return;
+      if (
+        useArchitectureStore.getState().architecture !== startingArchitecture
+      ) {
+        setNotice({
+          kind: 'info',
+          message:
+            'Import cancelled because the architecture changed while the file was being read. Choose the file again to replace the current project.',
+        });
+        return;
+      }
+      imported = deserializeArchitecture(serialized);
     } catch (error) {
+      if (request !== importRequestRef.current) return;
       setNotice({
         kind: 'error',
         message: `${describeImportError(error)} The current project was left unchanged.`,
@@ -201,6 +229,7 @@ export function TopBar() {
   };
 
   const resetCanonicalDemo = () => {
+    importRequestRef.current += 1;
     if (
       !runWorkspaceAction(() => {
         resetDemo();
@@ -226,7 +255,7 @@ export function TopBar() {
   };
 
   return (
-    <header className="flex h-[56px] shrink-0 items-center gap-2 whitespace-nowrap border-b border-slate-800/90 bg-[#0b0f15] px-3">
+    <header className="flex min-h-[56px] shrink-0 items-center gap-2 whitespace-nowrap border-b border-slate-800/90 bg-[#0b0f15] px-3 max-[1280px]:flex-wrap max-[1280px]:py-2">
       <div className="flex shrink-0 items-center">
         <div
           className="mr-2.5 grid size-7 place-items-center bg-cyan-400 text-slate-950"
@@ -270,7 +299,7 @@ export function TopBar() {
       </div>
 
       <nav
-        className="ml-auto flex shrink-0 items-center gap-0.5"
+        className="ml-auto flex shrink-0 items-center gap-0.5 max-[1280px]:basis-full max-[1280px]:justify-end"
         aria-label="Workspace actions"
       >
         <div className="mr-1 flex items-center border-r border-slate-800 pr-1.5">

@@ -106,12 +106,13 @@ export function InspectorSidebar() {
                       aria-hidden="true"
                     />
                   </div>
-                  <p className="mt-3 text-[12px] font-medium text-slate-400">
-                    Select an architecture element
+                  <p className="mt-3 text-[12px] font-medium text-slate-300">
+                    Cloud architecture, shared with your agent
                   </p>
                   <p className="mt-1.5 text-[11px] leading-4 text-slate-700">
-                    Click a node or edge to edit its typed properties. Connect
-                    nodes by dragging between their ports.
+                    Select a node to edit. Analyze cost, resilience, and
+                    security. Agents start in Review: the graph stays unchanged
+                    until you enable editing.
                   </p>
                   <p className="mt-3 font-mono text-[10px] text-slate-700">
                     {architecture.components.length} components ·{' '}

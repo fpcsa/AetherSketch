@@ -126,3 +126,7 @@ export function createIntelligenceStore(
 }
 
 export const useIntelligenceStore = createIntelligenceStore();
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => useIntelligenceStore.getState().dispose());
+}

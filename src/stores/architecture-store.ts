@@ -583,6 +583,20 @@ export function createArchitectureStore(
               );
             }
 
+            if (
+              current.connections.some(
+                (connection) =>
+                  connection.source === input.source &&
+                  connection.target === input.target &&
+                  connection.type === input.type,
+              )
+            ) {
+              throw new ArchitectureDomainError(
+                'INVALID_CONNECTION',
+                'This typed connection already exists. Inspect the existing connection instead of adding a duplicate.',
+              );
+            }
+
             const connectionId =
               input.id ?? `connection-${crypto.randomUUID()}`;
             if (

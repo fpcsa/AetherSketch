@@ -5,12 +5,12 @@ AetherSketch uses the same live Architecture IR for the canvas, deterministic en
 ## Exact presentation script
 
 1. Click **Reset Demo** to restore **Ecommerce Production**. Verify **5 components, 4 connections, $675/month, resilience 57, security 76**. Reset clears history, activity, simulation, selection, edit authority, and the prior comparison checkpoint. Obtain confirmation before resetting someone else's work; export it first if it must be retained.
-2. Confirm **Review Mode · 4 tools**. No mutation tool should be available.
+2. Confirm **Review Mode · 4 tools**. Open **Explore WebMCP tools** to show two strictly read-only tools and two presentation/activity tools. The five graph-edit tools must say **Not registered**. Close the panel with Escape.
 3. Ask: **“Analyze this architecture for production readiness. Do not modify anything.”** Show the Analysis panel and Agent activity. The architecture remains unchanged.
 4. Select **Orders Database** (PostgreSQL) and click **Lock component**.
 5. Set **Maximum monthly cost = 3000** and **Target resilience = 90** in Architecture Constraints. These human goals and the lock become the session checkpoint.
 6. Ask: **“Improve this architecture to survive an availability-zone failure while staying below my budget. Keep PostgreSQL.”** Editing is not yet authorized; the agent should explain or plan rather than mutate.
-7. Click **Enable editing** to enter **Agent Edit Mode · 9 tools**. If the agent paused for authorization, tell it to continue with the same request.
+7. Click **Enable editing** to enter **Agent Edit Mode · 9 tools**. Reopen **Explore WebMCP tools** to show dynamic registration, then close it. If the agent paused for authorization, tell it to continue with the same request.
 8. Let the agent modify the architecture through the five edit tools. Use the reference redesign below for repeatable metrics. Show the live canvas and Agent activity. The locked primary must remain unchanged.
 9. Click **Disable editing** after the redesign. Confirm four Review tools remain and the session comparison opens. Existing edits remain in the graph.
 10. Ask: **“Simulate the loss of eu-west-1a.”** The tool uses `scope="availability-zone"` and `target="eu-west-1a"`. It opens the simulation panel and canvas overlay.

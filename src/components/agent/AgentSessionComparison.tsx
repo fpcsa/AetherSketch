@@ -19,6 +19,7 @@ import type { Architecture } from '../../architecture/model';
 import { useArchitectureStore } from '../../stores/architecture-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
 import { useWebMcpStore } from '../../webmcp';
+import { usePanelFocus } from '../layout/use-panel-focus';
 
 function signed(value: number, currency = false): string {
   const prefix = value > 0 ? '+' : value < 0 ? '−' : '';
@@ -222,6 +223,7 @@ function OpenAgentSessionComparison({ baseline }: { baseline: Architecture }) {
   const architecture = useArchitectureStore((state) => state.architecture);
   const mode = useWebMcpStore((state) => state.mode);
   const setOpen = useWebMcpStore((state) => state.setComparisonOpen);
+  const panelRef = usePanelFocus(true, () => setOpen(false));
   const setActivePanel = useWorkspaceUiStore((state) => state.setActivePanel);
   const focusComponent = useWorkspaceUiStore((state) => state.focusComponent);
   const selectConnection = useWorkspaceUiStore(
@@ -244,7 +246,8 @@ function OpenAgentSessionComparison({ baseline }: { baseline: Architecture }) {
 
   return (
     <aside
-      className="absolute bottom-16 right-3 top-16 z-40 flex w-[min(52rem,calc(100vw-2rem))] flex-col border border-slate-700 bg-[#0c1118] shadow-2xl shadow-black/60"
+      ref={panelRef}
+      className="absolute bottom-16 right-3 top-16 z-40 flex w-[min(52rem,calc(100vw-2rem))] flex-col border border-slate-700 bg-[#0c1118] shadow-2xl shadow-black/60 max-[1280px]:top-28"
       aria-label="Agent session comparison"
     >
       <header className="flex h-11 shrink-0 items-center gap-2 border-b border-slate-800 px-3">

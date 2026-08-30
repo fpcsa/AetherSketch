@@ -4,6 +4,7 @@ import {
   boundaryKinds,
   componentSubnets,
   effectiveZones,
+  referencedComponentIds,
 } from '../../architecture/network/structure';
 import {
   Background,
@@ -35,6 +36,7 @@ import {
   useRef,
   useState,
   type DragEvent,
+  type KeyboardEvent,
 } from 'react';
 
 import { componentKinds } from '../../architecture/catalog';
@@ -389,12 +391,59 @@ function ArchitectureCanvasInner() {
     [clearSelection, removeComponent],
   );
 
+  const handleCanvasKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    // XYFlow's default keyboard state is internal; commit through the same IR as pointer edits.
+    const nodeId = target.matches('.react-flow__node')
+      ? target.getAttribute('data-id')
+      : undefined;
+    const edgeId = target.matches('.react-flow__edge')
+      ? target.getAttribute('data-id')
+      : undefined;
+    if (!nodeId && !edgeId) return;
+    if (event.key === 'Enter' || event.key === ' ' || event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.key === 'Escape') clearSelection();
+      else {
+        if (nodeId) selectComponent(nodeId);
+        else if (edgeId) selectConnection(edgeId);
+        setActivePanel('inspector');
+      }
+      return;
+    }
+    const directions: Record<string, [number, number]> = {
+      ArrowLeft: [-1, 0],
+      ArrowRight: [1, 0],
+      ArrowUp: [0, -1],
+      ArrowDown: [0, 1],
+    };
+    const direction = directions[event.key];
+    if (!nodeId || !direction || selectedComponentId !== nodeId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const component = useArchitectureStore
+      .getState()
+      .architecture.components.find((item) => item.id === nodeId);
+    if (!component || boundaryKinds.has(component.kind)) return;
+    const step = event.shiftKey ? 64 : 16;
+    runWorkspaceAction(
+      () =>
+        moveComponent(nodeId, {
+          x: component.position.x + direction[0] * step,
+          y: component.position.y + direction[1] * step,
+        }),
+      'The component could not be moved.',
+    );
+  };
+
   return (
     <section
       className="relative flex h-full min-h-0 flex-col overflow-hidden"
       aria-labelledby="canvas-title"
     >
-      <div className="flex h-10 shrink-0 items-center border-b border-slate-800/80 bg-[#0b0f15]/95 px-3">
+      <div className="flex min-h-10 shrink-0 flex-wrap items-center gap-y-1 border-b border-slate-800/80 bg-[#0b0f15]/95 px-3 py-1">
         <MousePointer2
           className="mr-2 size-3.5 text-cyan-400"
           aria-hidden="true"
@@ -488,6 +537,24 @@ function ArchitectureCanvasInner() {
           onNodeDragStop={handleNodeDragStop}
           onEdgesDelete={handleEdgesDelete}
           onNodesDelete={handleNodesDelete}
+          onKeyDownCapture={handleCanvasKeyDown}
+          onBeforeDelete={({ nodes }) => {
+            const graph = useArchitectureStore.getState().architecture;
+            const blocked = nodes.find((node) =>
+              graph.components.some(
+                (component) =>
+                  component.id !== node.id &&
+                  referencedComponentIds(component).includes(node.id),
+              ),
+            );
+            if (!blocked) return Promise.resolve(true);
+            setNotice({
+              kind: 'error',
+              message:
+                'Detach dependent network references before deleting this component. Nothing was deleted.',
+            });
+            return Promise.resolve(false);
+          }}
           onConnect={handleConnect}
           onPaneClick={clearSelection}
           deleteKeyCode={deleteKeys}
@@ -500,7 +567,6 @@ function ArchitectureCanvasInner() {
           elevateNodesOnSelect={false}
           snapToGrid
           snapGrid={snapGrid}
-          proOptions={{ hideAttribution: true }}
           colorMode={theme}
           defaultEdgeOptions={defaultEdgeOptions}
           aria-label="Interactive architecture diagram"

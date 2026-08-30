@@ -549,7 +549,21 @@ export const architectureSchema: z.ZodType<Architecture> = z
     });
 
     const connectionIds = new Set<string>();
+    const connectionSignatures = new Set<string>();
     architecture.connections.forEach((connection, index) => {
+      const signature = JSON.stringify([
+        connection.source,
+        connection.target,
+        connection.type,
+      ]);
+      if (connectionSignatures.has(signature)) {
+        context.addIssue({
+          code: 'custom',
+          message: 'Duplicate typed connection between these components.',
+          path: ['connections', index],
+        });
+      }
+      connectionSignatures.add(signature);
       if (connectionIds.has(connection.id)) {
         context.addIssue({
           code: 'custom',

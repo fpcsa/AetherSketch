@@ -155,8 +155,8 @@ function createMutationTool<TInput extends Record<string, unknown>, TOutput>(
         const data = parser.parse(input);
         dependencies.reporter?.invocation(name, data);
 
-        // Yield once so a human disabling Edit Mode during an in-flight call
-        // wins before the synchronous domain mutation begins.
+        // Recheck authority after the async boundary; a synchronous commit
+        // cannot be interrupted by a later browser input event.
         await Promise.resolve();
         assertEditMode(dependencies.isEditModeEnabled);
         if (options?.signal?.aborted) {
@@ -248,7 +248,7 @@ export function createWebMcpMutationTools(
     createMutationTool<RemoveComponentToolInput, MutationResult<object>>(
       'remove_component',
       'Remove component',
-      'Remove an unlocked component and its connected edges. Locked components are protected.',
+      'Remove an unlocked component and its incident edges. Detach network references from dependent components first. Locked components are protected; failures leave the graph unchanged.',
       removeComponentInputJsonSchema,
       removeComponentInputSchema,
       ({ componentId }) => {
@@ -282,7 +282,7 @@ export function createWebMcpMutationTools(
     createMutationTool<ConnectComponentsToolInput, MutationResult<object>>(
       'connect_components',
       'Connect components',
-      'Create a validated typed connection between two architecture components.',
+      'Connect IDs returned by get_architecture with a typed edge. A source/target/type relationship must be unique. Self-links are rejected; connections to locked components are allowed.',
       connectComponentsInputJsonSchema,
       connectComponentsInputSchema,
       ({ sourceComponentId, targetComponentId, ...connection }) => {

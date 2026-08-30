@@ -1,6 +1,7 @@
 import {
   Braces,
   Bug,
+  ListTree,
   GitCompareArrows,
   Pencil,
   ShieldCheck,
@@ -11,6 +12,8 @@ import { useState } from 'react';
 import { useArchitectureStore } from '../../stores/architecture-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
 import { type WebMcpLifecycleStatus, useWebMcpStore } from '../../webmcp';
+import { ToolDirectory } from './ToolDirectory';
+import { usePanelFocus } from '../layout/use-panel-focus';
 
 type WebMcpStatusProps = {
   compact?: boolean;
@@ -54,6 +57,7 @@ function JsonValue({ value }: { value: unknown }) {
 }
 
 function DebugPanel({ onClose }: { onClose: () => void }) {
+  const panelRef = usePanelFocus(true, onClose);
   const mode = useWebMcpStore((state) => state.mode);
   const readTools = useWebMcpStore((state) => state.readTools);
   const editTools = useWebMcpStore((state) => state.editTools);
@@ -67,6 +71,7 @@ function DebugPanel({ onClose }: { onClose: () => void }) {
 
   return (
     <section
+      ref={panelRef}
       id="webmcp-debug-panel"
       aria-label="WebMCP diagnostics"
       className="absolute right-0 top-10 z-50 max-h-[calc(100dvh-5rem)] w-[min(26rem,calc(100vw-2rem))] overflow-auto whitespace-normal border border-slate-700 bg-[#0d121a] p-3 text-left shadow-2xl shadow-black/40"
@@ -155,6 +160,7 @@ function DebugPanel({ onClose }: { onClose: () => void }) {
 
 export function WebMcpStatus({ compact = false }: WebMcpStatusProps) {
   const [debugOpen, setDebugOpen] = useState(false);
+  const [directoryOpen, setDirectoryOpen] = useState(false);
   const status = useWebMcpStore((state) => state.status);
   const mode = useWebMcpStore((state) => state.mode);
   const editRegistrationStatus = useWebMcpStore(
@@ -322,6 +328,23 @@ export function WebMcpStatus({ compact = false }: WebMcpStatusProps) {
         </button>
       ) : null}
 
+      <button
+        type="button"
+        className="ml-1 grid size-8 place-items-center border border-slate-800 text-slate-400 focus-visible:ring-2 focus-visible:ring-cyan-400"
+        aria-label="Explore WebMCP tools"
+        aria-expanded={directoryOpen}
+        onClick={() => {
+          setDebugOpen(false);
+          setDirectoryOpen((open) => !open);
+        }}
+        title="Inspect live tool discovery and human authority"
+      >
+        <ListTree className="size-3.5" aria-hidden="true" />
+      </button>
+      {directoryOpen ? (
+        <ToolDirectory onClose={() => setDirectoryOpen(false)} />
+      ) : null}
+
       {import.meta.env.DEV ? (
         <button
           type="button"
@@ -329,7 +352,10 @@ export function WebMcpStatus({ compact = false }: WebMcpStatusProps) {
           aria-label="Toggle WebMCP diagnostics"
           aria-expanded={debugOpen}
           aria-controls="webmcp-debug-panel"
-          onClick={() => setDebugOpen((open) => !open)}
+          onClick={() => {
+            setDirectoryOpen(false);
+            setDebugOpen((open) => !open);
+          }}
         >
           <Bug className="size-3.5" aria-hidden="true" />
         </button>
