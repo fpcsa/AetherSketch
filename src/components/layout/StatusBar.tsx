@@ -1,7 +1,9 @@
 import { Cloud, ShieldCheck } from 'lucide-react';
 
 import { useIntelligenceStore } from '../../stores/intelligence-store';
+import { useArchitectureStore } from '../../stores/architecture-store';
 import { WebMcpStatus } from '../agent/WebMcpStatus';
+import { formatScore } from '../analysis/score-format';
 
 type StatusMetricProps = {
   label: string;
@@ -26,6 +28,9 @@ function StatusMetric({ label, value, detail }: StatusMetricProps) {
 }
 
 export function StatusBar() {
+  const empty = useArchitectureStore(
+    (state) => state.architecture.components.length === 0,
+  );
   const analysis = useIntelligenceStore((state) => state.analysis);
   const analysisStale = useIntelligenceStore((state) => state.analysisStale);
 
@@ -48,13 +53,13 @@ export function StatusBar() {
       />
       <StatusMetric
         label="Resilience"
-        value={analysis?.resilienceScore.toString() ?? '—'}
-        detail={metricDetail}
+        value={formatScore(empty ? null : analysis?.resilienceScore)}
+        detail={empty ? '' : metricDetail}
       />
       <StatusMetric
         label="Security"
-        value={analysis?.securityScore.toString() ?? '—'}
-        detail={metricDetail}
+        value={formatScore(empty ? null : analysis?.securityScore)}
+        detail={empty ? '' : metricDetail}
       />
 
       <div className="ml-auto flex h-full items-center gap-5 px-3">

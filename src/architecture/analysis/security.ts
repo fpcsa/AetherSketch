@@ -2,6 +2,7 @@ import { analyzeNetwork } from './network';
 import { withEffectiveZones } from '../network/structure';
 import type { Architecture, ArchitectureComponent } from '../model';
 import { createFinding } from './finding';
+import { analyzeWebProtection, isPublicWebComponent } from './web-protection';
 import {
   containsPotentialSecret,
   encryptionAtRestState,
@@ -33,6 +34,9 @@ type SecurityRuleInput = {
 };
 
 export function analyzeSecurity(architecture: Architecture): ScoreAnalysis {
+  if (architecture.components.length === 0) {
+    return { score: null, baseScore: null, adjustments: [], findings: [] };
+  }
   architecture = withEffectiveZones(architecture);
   const adjustments: ScoreAdjustment[] = [];
   const findings: ArchitectureFinding[] = analyzeNetwork(architecture).filter(
@@ -161,39 +165,31 @@ export function analyzeSecurity(architecture: Architecture): ScoreAnalysis {
     }
   }
 
-  const publicWebArchitecture = architecture.components.some(
-    (component) =>
-      component.kind === 'internet' ||
-      component.kind === 'internet-gateway' ||
-      component.kind === 'cdn' ||
-      (component.kind === 'load-balancer' &&
-        component.configuration.scheme === 'internet-facing') ||
-      (component.kind === 'api-gateway' &&
-        component.configuration.endpointType !== 'private'),
-  );
-  const hasWaf = architecture.components.some(
-    (component) => component.kind === 'waf',
-  );
-  if (publicWebArchitecture && !hasWaf) {
+  const publicWebArchitecture =
+    architecture.components.some(isPublicWebComponent);
+  const protection = analyzeWebProtection(architecture);
+  if (publicWebArchitecture && !protection.protected) {
     applyRule({
       code: 'PUBLIC_WEB_WITHOUT_WAF',
       delta: -6,
       severity: 'medium',
-      title: 'Public web path has no WAF',
+      title: 'Public web paths lack WAF protection',
       message:
-        'The public request path has no modeled web application firewall.',
-      remediation: 'Add a WAF with managed rules and rate limiting.',
-      evidence: { publicWebArchitecture: true, hasWaf: false, scoreDelta: -6 },
+        'WAF protection is not established for every modeled public request path. A disconnected WAF or a bypass does not protect the application.',
+      remediation:
+        'Route public requests through a WAF before they reach application services, and remove bypass paths.',
+      evidence: { publicWebArchitecture: true, ...protection, scoreDelta: -6 },
     });
-  } else if (publicWebArchitecture && hasWaf) {
+  } else if (publicWebArchitecture && protection.protected) {
     applyRule({
       code: 'WAF_PRESENT',
       delta: 3,
       severity: 'info',
       title: 'Web application firewall is present',
-      message: 'The public request path includes a modeled WAF.',
+      message:
+        'Every modeled public request path to an application or delivery endpoint passes through a WAF.',
       remediation: 'Maintain managed rules and monitor blocked requests.',
-      evidence: { hasWaf: true, scoreDelta: 3 },
+      evidence: { ...protection, scoreDelta: 3 },
     });
   }
 

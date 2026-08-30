@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { compareArchitectures } from '../../src/architecture/comparison';
 import { createComponentFromCatalog } from '../../src/architecture/catalog';
-import { validateArchitecture } from '../../src/architecture/model';
+import {
+  createEmptyArchitecture,
+  validateArchitecture,
+} from '../../src/architecture/model';
 import { getArchitectureTemplate } from '../../src/templates';
 import { getAgentImprovedLockedEcommerceArchitecture } from '../helpers/architecture-fixtures';
 
@@ -28,6 +31,28 @@ function getHumanCheckpoint() {
 }
 
 describe('deterministic architecture comparison', () => {
+  it('does not invent score deltas to, from, or between empty architectures', () => {
+    const empty = createEmptyArchitecture({ name: 'Empty architecture' });
+    const populated = getHumanCheckpoint();
+    for (const [before, after] of [
+      [empty, populated],
+      [populated, empty],
+      [empty, empty],
+    ]) {
+      const comparison = compareArchitectures(before, after);
+      expect(comparison.delta).toMatchObject({
+        resilienceScore: null,
+        securityScore: null,
+      });
+      expect(comparison.delta.estimatedMonthlyCost).toBeTypeOf('number');
+      expect(
+        before.components.length === 0 ? comparison.before : comparison.after,
+      ).toMatchObject({
+        resilienceScore: null,
+        securityScore: null,
+      });
+    }
+  });
   it.each([30, 50])(
     'compares a %i-component workload without losing structural changes',
     (count) => {

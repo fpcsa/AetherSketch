@@ -7,8 +7,8 @@ import type {
 
 export type ArchitectureMetricSnapshot = {
   estimatedMonthlyCost: number;
-  resilienceScore: number;
-  securityScore: number;
+  resilienceScore: number | null;
+  securityScore: number | null;
 };
 
 export type ArchitectureDiffEntity =
@@ -254,8 +254,14 @@ export function compareArchitectures(
     delta: {
       estimatedMonthlyCost:
         after.estimatedMonthlyCost - before.estimatedMonthlyCost,
-      resilienceScore: after.resilienceScore - before.resilienceScore,
-      securityScore: after.securityScore - before.securityScore,
+      resilienceScore:
+        after.resilienceScore === null || before.resilienceScore === null
+          ? null
+          : after.resilienceScore - before.resilienceScore,
+      securityScore:
+        after.securityScore === null || before.securityScore === null
+          ? null
+          : after.securityScore - before.securityScore,
     },
     added,
     changed,

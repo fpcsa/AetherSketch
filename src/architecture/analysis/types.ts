@@ -60,8 +60,9 @@ export type ScoreAdjustment = {
 };
 
 export type ScoreAnalysis = {
-  score: number;
-  baseScore: number;
+  /** Empty architectures are not assessed; null is not a zero score. */
+  score: number | null;
+  baseScore: number | null;
   adjustments: ScoreAdjustment[];
   findings: ArchitectureFinding[];
 };
@@ -100,8 +101,8 @@ export type ArchitectureAnalysis = {
   architectureRevision: number;
   focus: AnalysisFocus;
   estimatedMonthlyCost: number;
-  resilienceScore: number;
-  securityScore: number;
+  resilienceScore: number | null;
+  securityScore: number | null;
   validationStatus: 'valid' | 'invalid';
   cost: CostEstimate;
   resilience: ScoreAnalysis;

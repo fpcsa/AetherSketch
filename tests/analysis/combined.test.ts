@@ -1,10 +1,52 @@
 import { describe, expect, it } from 'vitest';
 
 import { analyzeArchitecture } from '../../src/architecture/analysis';
+import { createEmptyArchitecture } from '../../src/architecture/model';
 import { getArchitectureTemplate } from '../../src/templates';
 import { getHardenedEcommerceArchitecture } from '../helpers/architecture-fixtures';
 
 describe('combined architecture analysis', () => {
+  it.each(['all', 'security', 'resilience', 'cost', 'validation'] as const)(
+    'does not score empty architectures, including focus=%s',
+    (focus) => {
+      const result = analyzeArchitecture(
+        createEmptyArchitecture({ name: 'Empty architecture' }),
+        { focus },
+      );
+      expect(result).toMatchObject({
+        resilienceScore: null,
+        securityScore: null,
+        estimatedMonthlyCost: 0,
+        validationStatus: 'invalid',
+        resilience: { score: null, baseScore: null, adjustments: [] },
+        security: { score: null, baseScore: null, adjustments: [] },
+      });
+      expect(
+        result.validation.findings.map((finding) => finding.code),
+      ).toContain('NO_ENTRY_PATH');
+    },
+  );
+
+  it('cannot satisfy score targets with an unassessed empty architecture', () => {
+    const architecture = createEmptyArchitecture({
+      name: 'Empty architecture',
+    });
+    architecture.constraints.targetResilienceScore = 0;
+    architecture.constraints.targetSecurityScore = 80;
+    const result = analyzeArchitecture(architecture);
+    expect(result.constraints.allApplicableConstraintsMet).toBe(false);
+    for (const id of ['resilience-target', 'security-target']) {
+      expect(
+        result.constraints.results.find((item) => item.id === id),
+      ).toMatchObject({
+        actual: null,
+        status: 'not-met',
+      });
+      expect(
+        result.constraints.results.find((item) => item.id === id)?.message,
+      ).toContain('not assessed');
+    }
+  });
   it('returns all deterministic metrics and de-duplicated findings', () => {
     const result = analyzeArchitecture(
       getArchitectureTemplate('ecommerce-production'),

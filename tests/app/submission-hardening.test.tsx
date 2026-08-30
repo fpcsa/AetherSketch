@@ -10,6 +10,8 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/app/App';
 import { serializeArchitecture } from '../../src/architecture/serialization';
+import { createEmptyArchitecture } from '../../src/architecture/model';
+import { AgentSessionComparison } from '../../src/components/agent/AgentSessionComparison';
 import { WebMcpStatus } from '../../src/components/agent/WebMcpStatus';
 import { useArchitectureStore } from '../../src/stores/architecture-store';
 import { useIntelligenceStore } from '../../src/stores/intelligence-store';
@@ -53,6 +55,68 @@ describe('submission hardening', () => {
       persistenceRecoveryNotice: null,
     });
     useIntelligenceStore.getState().runAnalysis();
+  });
+
+  it('switches between assessed and unassessed scores when adding a node and undoing it', async () => {
+    render(<App />);
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Architecture template' }),
+      { target: { value: 'blank' } },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze' }));
+    await waitFor(() =>
+      expect(
+        within(
+          screen.getByRole('contentinfo', { name: 'Architecture status' }),
+        ).getAllByText('Not assessed'),
+      ).toHaveLength(2),
+    );
+    expect(screen.queryAllByRole('progressbar')).toHaveLength(0);
+    expect(
+      screen.getByText(
+        'Not assessed. Add components to assess resilience and security.',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText('No findings for this analysis focus.'),
+    ).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Add DNS' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Rerun' }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole('progressbar', { name: 'Resilience score' }),
+      ).toHaveAttribute('aria-valuenow', '90'),
+    );
+    expect(
+      within(
+        screen.getByRole('contentinfo', { name: 'Architecture status' }),
+      ).queryByText('Not assessed'),
+    ).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('progressbar')).toHaveLength(0),
+    );
+    expect(
+      within(
+        screen.getByRole('contentinfo', { name: 'Architecture status' }),
+      ).getAllByText('Not assessed'),
+    ).toHaveLength(2);
+  });
+
+  it('shows empty comparison endpoints as unassessed without numeric score deltas', () => {
+    useWebMcpStore.setState({
+      agentSessionBaseline: createEmptyArchitecture({
+        name: 'Empty architecture',
+      }),
+      comparisonOpen: true,
+    });
+    render(<AgentSessionComparison />);
+    const metrics = within(screen.getByTestId('agent-session-score-deltas'));
+    expect(metrics.getAllByText('Not assessed')).toHaveLength(2);
+    expect(metrics.getAllByText('No score comparison')).toHaveLength(2);
+    expect(metrics.getByText('57')).toBeVisible();
+    expect(metrics.getByText('76')).toBeVisible();
   });
 
   it('rejects oversized files before allocating their contents', () => {

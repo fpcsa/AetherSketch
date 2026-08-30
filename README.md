@@ -148,6 +148,8 @@ The Network catalog includes **Internet Gateway** (public routing) and **Virtual
 
 Costs come from catalog baselines and a small set of configuration multipliers. They omit usage volume, traffic, regional price sheets, discounts, and taxes. **They are planning estimates, not provider quotes.** Scores expose deterministic structural rules, not an SLA, compliance certification, or security scan.
 
+Empty architectures are **Not assessed**: resilience and security scores are `null` in WebMCP responses, have no progress bars or numeric comparison deltas, and cannot satisfy score targets. Cost remains $0 and structural validation still reports the missing entry path. WAF credit requires modeled public request paths to pass through a WAF before reaching application or delivery endpoints; disconnected WAFs, non-request links, and bypass paths earn no protection credit.
+
 Simulation projects graph reachability and modeled redundancy. It does not predict recovery time, remaining capacity, replication lag, or data loss. [Rules and limitations](docs/ANALYSIS.md).
 
 ## Security

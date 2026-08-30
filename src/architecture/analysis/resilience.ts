@@ -31,6 +31,9 @@ type ResilienceRuleInput = {
 };
 
 export function analyzeResilience(architecture: Architecture): ScoreAnalysis {
+  if (architecture.components.length === 0) {
+    return { score: null, baseScore: null, adjustments: [], findings: [] };
+  }
   architecture = withEffectiveZones(architecture);
   const adjustments: ScoreAdjustment[] = [];
   const findings: ArchitectureFinding[] = analyzeNetwork(architecture).filter(

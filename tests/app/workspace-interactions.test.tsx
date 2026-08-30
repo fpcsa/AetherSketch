@@ -1287,7 +1287,9 @@ describe('human architecture workspace', () => {
       'aria-current',
       'page',
     );
-    expect(screen.getByText('Public web path has no WAF')).toBeVisible();
+    expect(
+      screen.getByText('Public web paths lack WAF protection'),
+    ).toBeVisible();
     expect(useArchitectureStore.getState().activity.at(-1)).toMatchObject({
       actor: 'agent',
       action: 'webmcp.analysis.completed',

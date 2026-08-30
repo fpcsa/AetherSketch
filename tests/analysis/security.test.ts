@@ -34,25 +34,119 @@ describe('deterministic security scoring', () => {
     );
   });
 
-  it('replaces the missing-WAF penalty with a positive WAF adjustment', () => {
-    const architecture = getArchitectureTemplate('ecommerce-production');
-    const baseline = analyzeSecurity(architecture);
-    const waf = createComponentFromCatalog(
-      { id: 'test-waf', kind: 'waf' },
-      { provider: 'aws', region: architecture.region },
-    );
-    const result = analyzeSecurity({
-      ...architecture,
-      components: [...architecture.components, waf],
-    });
+  it.each([false, true])(
+    'does not credit a disconnected WAF (critical=%s)',
+    (critical) => {
+      const architecture = getArchitectureTemplate('ecommerce-production');
+      const baseline = analyzeSecurity(architecture);
+      const waf = createComponentFromCatalog(
+        { id: 'test-waf', kind: 'waf', critical },
+        { provider: 'aws', region: architecture.region },
+      );
+      const result = analyzeSecurity({
+        ...architecture,
+        components: [...architecture.components, waf],
+      });
 
-    expect(result.score).toBeGreaterThan(baseline.score);
-    expect(result.findings.map((finding) => finding.code)).toContain(
+      expect(result.score).toBe(baseline.score);
+      expect(result.findings.map((finding) => finding.code)).not.toContain(
+        'WAF_PRESENT',
+      );
+      expect(result.findings.map((finding) => finding.code)).toContain(
+        'PUBLIC_WEB_WITHOUT_WAF',
+      );
+    },
+  );
+
+  it('does not credit a WAF when a public request can bypass it', () => {
+    const architecture = getHardenedEcommerceArchitecture();
+    architecture.connections.push({
+      ...getArchitectureTemplate('ecommerce-production').connections[1],
+      id: 'waf-bypass',
+    });
+    const before = JSON.stringify(architecture);
+    const result = analyzeSecurity(architecture);
+    expect(result.score).toBe(81);
+    expect(result.findings.map((finding) => finding.code)).not.toContain(
       'WAF_PRESENT',
     );
-    expect(result.findings.map((finding) => finding.code)).not.toContain(
-      'PUBLIC_WEB_WITHOUT_WAF',
+    expect(
+      result.findings.find(
+        (finding) => finding.code === 'PUBLIC_WEB_WITHOUT_WAF',
+      )?.evidence,
+    ).toMatchObject({
+      unprotectedComponentIds: ['ecommerce-ecs'],
+    });
+    expect(JSON.stringify(architecture)).toBe(before);
+  });
+
+  it.each(['management', 'data', 'async'] as const)(
+    'does not mistake %s links for WAF request protection',
+    (type) => {
+      const architecture = getHardenedEcommerceArchitecture();
+      architecture.connections = architecture.connections.map((connection) =>
+        connection.source === 'ecommerce-waf' ||
+        connection.target === 'ecommerce-waf'
+          ? { ...connection, type }
+          : connection,
+      );
+      const result = analyzeSecurity(architecture);
+      expect(result.findings.map((finding) => finding.code)).not.toContain(
+        'WAF_PRESENT',
+      );
+      expect(result.findings.map((finding) => finding.code)).toContain(
+        'PUBLIC_WEB_WITHOUT_WAF',
+      );
+    },
+  );
+
+  it('does not credit a WAF on a dead-end branch', () => {
+    const architecture = getHardenedEcommerceArchitecture();
+    architecture.connections = architecture.connections.filter(
+      (connection) => connection.source !== 'ecommerce-waf',
     );
+    architecture.connections.push({
+      ...getArchitectureTemplate('ecommerce-production').connections[1],
+      id: 'application-path',
+    });
+    expect(
+      analyzeSecurity(architecture).findings.map((finding) => finding.code),
+    ).not.toContain('WAF_PRESENT');
+  });
+
+  it('requires protection for a second independent public entry path', () => {
+    const architecture = getHardenedEcommerceArchitecture();
+    const gateway = createComponentFromCatalog(
+      { id: 'second-api', kind: 'api-gateway' },
+      { provider: 'aws', region: architecture.region },
+    );
+    architecture.components.push(gateway);
+    architecture.connections.push({
+      id: 'second-entry',
+      source: gateway.id,
+      target: 'ecommerce-ecs',
+      type: 'request',
+      encrypted: true,
+      critical: true,
+      metadata: {},
+    });
+    expect(
+      analyzeSecurity(architecture).findings.map((finding) => finding.code),
+    ).not.toContain('WAF_PRESENT');
+  });
+
+  it('terminates on request cycles and preserves protection upstream of the cycle', () => {
+    const architecture = getHardenedEcommerceArchitecture();
+    architecture.connections.push({
+      id: 'request-cycle',
+      source: 'ecommerce-ecs',
+      target: 'ecommerce-alb',
+      type: 'request',
+      encrypted: true,
+      critical: false,
+      metadata: {},
+    });
+    expect(analyzeSecurity(architecture).score).toBe(90);
   });
 
   it('flags public, unencrypted databases and unencrypted data transport', () => {

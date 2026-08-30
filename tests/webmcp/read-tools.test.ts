@@ -64,6 +64,37 @@ async function execute<T>(
 }
 
 describe('WebMCP read tools', () => {
+  it('returns null scores through fresh analysis and cached graph metrics for an empty graph', async () => {
+    const { tools, architecture } = createHarness();
+    architecture.components = [];
+    architecture.connections = [];
+    architecture.revision += 1;
+    const analysis = await execute(
+      toolNamed(tools, 'analyze_architecture'),
+      {},
+    );
+    expect(analysis).toMatchObject({
+      ok: true,
+      data: {
+        resilienceScore: null,
+        securityScore: null,
+        validationStatus: 'invalid',
+      },
+    });
+    expect(
+      await execute(toolNamed(tools, 'get_architecture'), {}),
+    ).toMatchObject({
+      ok: true,
+      data: {
+        metricsStatus: 'current',
+        metrics: {
+          resilienceScore: null,
+          securityScore: null,
+          validationStatus: 'invalid',
+        },
+      },
+    });
+  });
   it('omits free-form notes and account references even when the source contains them', async () => {
     const { tools, architecture } = createHarness();
     architecture.constraints.notes = {

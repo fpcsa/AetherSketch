@@ -15,7 +15,7 @@ import type {
 function targetResult(
   id: 'resilience-target' | 'security-target',
   label: string,
-  actual: number,
+  actual: number | null,
   expected: number | undefined,
 ): ConstraintResult {
   if (expected === undefined) {
@@ -28,6 +28,15 @@ function targetResult(
     };
   }
 
+  if (actual === null) {
+    return {
+      id,
+      status: 'not-met',
+      actual: null,
+      expected,
+      message: `${label} is not assessed for an empty architecture. Add components to evaluate the target of ${expected}.`,
+    };
+  }
   const met = actual >= expected;
   return {
     id,

@@ -51,6 +51,8 @@ describe('deterministic resilience scoring', () => {
   it('improves resilience independently for Multi-AZ RDS and replicated compute', () => {
     const architecture = getArchitectureTemplate('ecommerce-production');
     const baseline = analyzeResilience(architecture);
+    if (baseline.score === null)
+      throw new Error('Expected an assessed baseline');
     const multiAzDatabase = {
       ...architecture,
       components: architecture.components.map((component) =>

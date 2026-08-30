@@ -8,6 +8,7 @@ import { useArchitectureStore } from '../../stores/architecture-store';
 import { useIntelligenceStore } from '../../stores/intelligence-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
 import { runWorkspaceAction } from '../layout/workspace-actions';
+import { formatScore } from './score-format';
 
 const severityOrder: readonly FindingSeverity[] = [
   'critical',
@@ -36,6 +37,9 @@ export function AnalysisPanel() {
   const selectConnection = useWorkspaceUiStore(
     (state) => state.selectConnection,
   );
+  const empty = architecture.components.length === 0;
+  const resilienceScore = empty ? null : analysis?.resilienceScore;
+  const securityScore = empty ? null : analysis?.securityScore;
 
   const findingsBySeverity = severityOrder
     .map((severity) => ({
@@ -60,15 +64,15 @@ export function AnalysisPanel() {
         />
         <Metric
           label="Resilience"
-          value={analysis?.resilienceScore.toString() ?? '—'}
-          detail="/ 100"
-          progress={analysis?.resilienceScore}
+          value={formatScore(resilienceScore)}
+          detail={resilienceScore === null ? '' : '/ 100'}
+          progress={resilienceScore ?? undefined}
         />
         <Metric
           label="Security"
-          value={analysis?.securityScore.toString() ?? '—'}
-          detail="/ 100"
-          progress={analysis?.securityScore}
+          value={formatScore(securityScore)}
+          detail={securityScore === null ? '' : '/ 100'}
+          progress={securityScore ?? undefined}
         />
       </div>
 
@@ -121,6 +125,13 @@ export function AnalysisPanel() {
         ) : null}
         {analysis ? (
           <>
+            {resilienceScore === null ? (
+              <p className="mb-3 border border-slate-700 p-3 text-xs text-slate-400">
+                {empty
+                  ? 'Not assessed. Add components to assess resilience and security.'
+                  : 'Not assessed. Rerun analysis for the current architecture.'}
+              </p>
+            ) : null}
             {analysisStale ? (
               <div className="mb-3 flex items-start gap-2 border border-amber-400/25 bg-amber-400/5 p-2.5 text-[11px] leading-4 text-amber-200/80">
                 <AlertTriangle
@@ -170,7 +181,7 @@ export function AnalysisPanel() {
                   </section>
                 ))}
               </div>
-            ) : (
+            ) : resilienceScore === null ? null : (
               <p className="border border-emerald-400/20 bg-emerald-400/5 p-3 text-[12px] text-emerald-300/80">
                 No findings for this analysis focus.
               </p>

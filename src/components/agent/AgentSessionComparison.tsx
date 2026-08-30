@@ -20,6 +20,7 @@ import { useArchitectureStore } from '../../stores/architecture-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
 import { useWebMcpStore } from '../../webmcp';
 import { usePanelFocus } from '../layout/use-panel-focus';
+import { formatScore } from '../analysis/score-format';
 
 function signed(value: number, currency = false): string {
   const prefix = value > 0 ? '+' : value < 0 ? '−' : '';
@@ -35,14 +36,16 @@ function MetricDelta({
   currency = false,
 }: {
   label: string;
-  before: number;
-  after: number;
-  delta: number;
+  before: number | null;
+  after: number | null;
+  delta: number | null;
   currency?: boolean;
 }) {
-  const format = (value: number) =>
-    currency ? `$${value.toLocaleString('en-US')}` : value.toString();
-  const improvement = currency ? delta <= 0 : delta >= 0;
+  const format = (value: number | null) =>
+    currency && value !== null
+      ? `$${value.toLocaleString('en-US')}`
+      : formatScore(value);
+  const improvement = delta !== null && (currency ? delta <= 0 : delta >= 0);
 
   return (
     <div className="border-r border-slate-800/80 px-3 py-3 last:border-r-0">
@@ -50,14 +53,14 @@ function MetricDelta({
         {label}
       </p>
       <p className="mt-1 text-[11px] text-slate-500">Before → After</p>
-      <div className="mt-1 flex items-center gap-2 text-lg font-semibold tabular-nums text-slate-100">
+      <div className="mt-1 flex flex-wrap items-center gap-2 text-lg font-semibold tabular-nums text-slate-100">
         <span>{format(before)}</span>
         <ArrowRight className="size-3 text-slate-700" aria-hidden="true" />
         <span>{format(after)}</span>
       </div>
       <p
         className={`mt-1 text-[11px] font-semibold tabular-nums ${
-          delta === 0
+          delta === null || delta === 0
             ? 'text-slate-600'
             : improvement
               ? 'text-emerald-400'
@@ -66,7 +69,7 @@ function MetricDelta({
                 : 'text-rose-400'
         }`}
       >
-        {signed(delta, currency)}
+        {delta === null ? 'No score comparison' : signed(delta, currency)}
       </p>
     </div>
   );
