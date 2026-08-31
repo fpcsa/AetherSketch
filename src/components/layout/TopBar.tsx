@@ -287,14 +287,14 @@ export function TopBar() {
           title="Load an architecture template"
         >
           {currentTemplate === 'custom' ? (
-            <option value="custom">{architecture.name}</option>
+            <option value="custom">{architecture.name} (current)</option>
           ) : null}
           {architectureTemplateIds.map((templateId) => (
             <option key={templateId} value={templateId}>
               {templateLabels[templateId]}
             </option>
           ))}
-          <option value="blank">Blank Architecture</option>
+          <option value="blank">Create blank architecture</option>
         </select>
       </div>
 
