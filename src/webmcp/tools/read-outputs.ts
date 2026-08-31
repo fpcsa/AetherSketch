@@ -83,6 +83,8 @@ export function compactArchitecture(
       id: connection.id,
       source: connection.source,
       target: connection.target,
+      sourcePort: connection.sourcePort ?? 'right',
+      targetPort: connection.targetPort ?? 'left',
       type: connection.type,
       protocol: connection.protocol,
       encrypted: connection.encrypted,

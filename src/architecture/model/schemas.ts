@@ -3,6 +3,7 @@ import { networkReferenceIssues, isIpv4Cidr } from '../network/structure';
 
 import {
   ARCHITECTURE_SCHEMA_VERSION,
+  CONNECTION_PORTS,
   CONNECTION_TYPES,
   type ActivityEntry,
   type Architecture,
@@ -504,6 +505,8 @@ export const architectureConnectionSchema = z
     id: idSchema,
     source: idSchema,
     target: idSchema,
+    sourcePort: z.enum(CONNECTION_PORTS).optional(),
+    targetPort: z.enum(CONNECTION_PORTS).optional(),
     type: z.enum(CONNECTION_TYPES),
     protocol: z.string().trim().min(1).max(64).optional(),
     encrypted: z.boolean(),

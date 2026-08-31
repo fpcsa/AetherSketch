@@ -2,10 +2,11 @@ import { ArrowRight, Trash2 } from 'lucide-react';
 
 import type {
   ArchitectureConnection,
+  ConnectionPort,
   ConnectionType,
   ConnectionUpdate,
 } from '../../architecture/model';
-import { CONNECTION_TYPES } from '../../architecture/model';
+import { CONNECTION_PORTS, CONNECTION_TYPES } from '../../architecture/model';
 import { useArchitectureStore } from '../../stores/architecture-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
 import { runWorkspaceAction } from '../layout/workspace-actions';
@@ -68,6 +69,35 @@ export function ConnectionInspector({ connection }: ConnectionInspectorProps) {
 
       <fieldset className="space-y-3 px-3 py-3">
         <legend className="sr-only">Connection properties</legend>
+        <div className="grid grid-cols-2 gap-2">
+          {(['source', 'target'] as const).map((endpoint) => (
+            <label
+              key={endpoint}
+              className="block text-[11px] font-medium uppercase tracking-[0.1em] text-slate-600"
+            >
+              {endpoint === 'source' ? 'Source side' : 'Target side'}
+              <select
+                className={inputClass}
+                value={
+                  connection[`${endpoint}Port`] ??
+                  (endpoint === 'source' ? 'right' : 'left')
+                }
+                onChange={(event) =>
+                  commit({
+                    [`${endpoint}Port`]: event.currentTarget
+                      .value as ConnectionPort,
+                  })
+                }
+              >
+                {CONNECTION_PORTS.map((port) => (
+                  <option key={port} value={port}>
+                    {port[0].toUpperCase() + port.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ))}
+        </div>
         <label className="block text-[11px] font-medium uppercase tracking-[0.1em] text-slate-600">
           Connection type
           <select

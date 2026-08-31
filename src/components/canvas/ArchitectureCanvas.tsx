@@ -9,6 +9,7 @@ import {
 import {
   Background,
   BackgroundVariant,
+  ConnectionMode,
   Controls,
   MarkerType,
   MiniMap,
@@ -40,7 +41,11 @@ import {
 } from 'react';
 
 import { componentKinds } from '../../architecture/catalog';
-import type { ComponentKind, ConnectionType } from '../../architecture/model';
+import {
+  architectureConnectionSchema,
+  type ComponentKind,
+  type ConnectionType,
+} from '../../architecture/model';
 import { useArchitectureStore } from '../../stores/architecture-store';
 import { useIntelligenceStore } from '../../stores/intelligence-store';
 import { useThemeStore } from '../../stores/theme-store';
@@ -215,6 +220,8 @@ function ArchitectureCanvasInner() {
           type: 'architecture-connection',
           source: connection.source,
           target: connection.target,
+          sourceHandle: connection.sourcePort ?? 'right',
+          targetHandle: connection.targetPort ?? 'left',
           selected: connection.id === selectedConnectionId,
           animated: connection.type === 'async' && !impacted,
           data: {
@@ -286,6 +293,12 @@ function ArchitectureCanvasInner() {
         const connectionId = connectComponents({
           source: connection.source,
           target: connection.target,
+          sourcePort: architectureConnectionSchema.shape.sourcePort.parse(
+            connection.sourceHandle ?? undefined,
+          ),
+          targetPort: architectureConnectionSchema.shape.targetPort.parse(
+            connection.targetHandle ?? undefined,
+          ),
           type: 'request',
           protocol: 'HTTPS',
           encrypted: true,
@@ -556,6 +569,7 @@ function ArchitectureCanvasInner() {
             return Promise.resolve(false);
           }}
           onConnect={handleConnect}
+          connectionMode={ConnectionMode.Loose}
           onPaneClick={clearSelection}
           deleteKeyCode={deleteKeys}
           selectionKeyCode="Shift"

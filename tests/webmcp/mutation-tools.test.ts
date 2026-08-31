@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { analyzeArchitecture } from '../../src/architecture/analysis';
 import { simulateFailure } from '../../src/architecture/simulation';
+import { compactArchitecture } from '../../src/webmcp/tools/read-outputs';
 import {
   createArchitectureStore,
   type PersistedArchitectureState,
@@ -101,6 +102,41 @@ async function execute<T>(
 }
 
 describe('WebMCP mutation tools', () => {
+  it('creates and reads selected ports through WebMCP and rejects invalid sides', async () => {
+    const { tools, architectureStore, intelligenceStore } = createHarness();
+    const tool = toolNamed(tools, 'connect_components');
+    const input = {
+      sourceComponentId: 'ecommerce-internet',
+      targetComponentId: 'ecommerce-ecs',
+      type: 'request',
+      sourcePort: 'bottom',
+      targetPort: 'top',
+    };
+    const before = architectureStore.getState();
+    expect(
+      await execute(tool, { ...input, targetPort: 'diagonal' }),
+    ).toMatchObject({ ok: false });
+    expect(architectureStore.getState()).toBe(before);
+    expect(await execute(tool, input)).toMatchObject({
+      ok: true,
+      data: {
+        mutation: { connection: { sourcePort: 'bottom', targetPort: 'top' } },
+      },
+    });
+    const graph = compactArchitecture(
+      architectureStore.getState().architecture,
+      { analysis: null, stale: true },
+    );
+    expect(graph.connections.at(-1)).toMatchObject({
+      sourcePort: 'bottom',
+      targetPort: 'top',
+    });
+    expect(graph.connections[0]).toMatchObject({
+      sourcePort: 'right',
+      targetPort: 'left',
+    });
+    intelligenceStore.getState().dispose();
+  });
   it('rejects a duplicate semantic edge without changing graph, history or simulation', async () => {
     const { tools, architectureStore, intelligenceStore } = createHarness();
     intelligenceStore

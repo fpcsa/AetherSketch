@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   ArchitectureDomainError,
+  type ConnectionPort,
   type AddComponentInput,
 } from '../../src/architecture/model';
 import {
@@ -11,6 +12,10 @@ import {
   type PersistedArchitectureState,
 } from '../../src/stores/architecture-store';
 import { getArchitectureTemplate } from '../../src/templates';
+import {
+  deserializeArchitecture,
+  serializeArchitecture,
+} from '../../src/architecture/serialization';
 
 function createMemoryStorage(): StateStorage {
   const values = new Map<string, string>();
@@ -39,6 +44,75 @@ function createTestStore(isAgentEditingEnabled = () => false) {
 }
 
 describe('architecture store mutations', () => {
+  it('preserves selected ports through edits, undo/redo, saved history, and JSON export/import', () => {
+    const storage = createPersistStorage(createMemoryStorage());
+    const first = createArchitectureStore({ storage });
+    const id = first.getState().connectComponents({
+      source: 'ecommerce-internet',
+      target: 'ecommerce-ecs',
+      type: 'request',
+      sourcePort: 'bottom',
+      targetPort: 'top',
+    });
+    first.getState().updateConnection(id, { encrypted: false });
+    expect(first.getState().architecture.connections.at(-1)).toMatchObject({
+      sourcePort: 'bottom',
+      targetPort: 'top',
+      encrypted: false,
+    });
+    first.getState().undo();
+    first.getState().undo();
+    expect(
+      first.getState().architecture.connections.some((edge) => edge.id === id),
+    ).toBe(false);
+    const restored = createArchitectureStore({ storage });
+    expect(restored.getState().persistenceRecoveryNotice).toBeNull();
+    restored.getState().redo();
+    expect(restored.getState().architecture.connections.at(-1)).toMatchObject({
+      sourcePort: 'bottom',
+      targetPort: 'top',
+      encrypted: true,
+    });
+    restored.getState().redo();
+    const exported = serializeArchitecture(restored.getState().architecture);
+    const imported = deserializeArchitecture(exported);
+    expect(imported).toEqual(restored.getState().architecture);
+    const reloaded = createArchitectureStore({ storage });
+    expect(reloaded.getState().architecture).toEqual(imported);
+    expect(reloaded.getState().past).toEqual(restored.getState().past);
+  });
+
+  it('rejects invalid ports and typed duplicates on other sides without changing state', () => {
+    const store = createTestStore();
+    const before = store.getState();
+    expect(() =>
+      store.getState().connectComponents({
+        source: 'ecommerce-internet',
+        target: 'ecommerce-ecs',
+        type: 'request',
+        sourcePort: 'diagonal' as ConnectionPort,
+      }),
+    ).toThrow();
+    expect(() =>
+      store.getState().updateConnection('ecommerce-edge-1', {
+        targetPort: 'diagonal' as ConnectionPort,
+      }),
+    ).toThrow();
+    expect(() =>
+      store.getState().connectComponents({
+        source: 'ecommerce-internet',
+        target: 'ecommerce-cloudfront',
+        type: 'request',
+        sourcePort: 'bottom',
+        targetPort: 'top',
+      }),
+    ).toThrowError(expect.objectContaining({ code: 'INVALID_CONNECTION' }));
+    expect(store.getState()).toBe(before);
+    const invalid = structuredClone(before.architecture);
+    invalid.connections[0].targetPort = 'diagonal' as ConnectionPort;
+    expect(() => deserializeArchitecture(JSON.stringify(invalid))).toThrow();
+  });
+
   it('rehydrates network membership, nested rules, pending subnet edits, and undo history', () => {
     const storage = createPersistStorage(createMemoryStorage());
     const first = createArchitectureStore({ storage });

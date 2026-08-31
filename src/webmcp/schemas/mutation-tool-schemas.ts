@@ -5,6 +5,7 @@ import {
   componentSchemas,
   networkPlacementSchema,
   CONNECTION_TYPES,
+  CONNECTION_PORTS,
   type ComponentConfigurationMap,
   type ComponentKind,
 } from '../../architecture/model';
@@ -105,6 +106,18 @@ export const connectComponentsInputSchema = z
   .object({
     sourceComponentId: idSchema,
     targetComponentId: idSchema,
+    sourcePort: z
+      .enum(CONNECTION_PORTS)
+      .optional()
+      .describe(
+        'Visual source side; defaults to right. Does not change traffic direction.',
+      ),
+    targetPort: z
+      .enum(CONNECTION_PORTS)
+      .optional()
+      .describe(
+        'Visual target side; defaults to left. Does not change traffic direction.',
+      ),
     type: z.enum(CONNECTION_TYPES),
     protocol: z.string().trim().min(1).max(64).optional(),
     encrypted: z.boolean().optional(),

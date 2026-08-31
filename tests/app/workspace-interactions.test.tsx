@@ -581,9 +581,11 @@ describe('human architecture workspace', () => {
       useArchitectureStore.getState().architecture.connections.length;
 
     fireEvent.click(
-      screen.getByLabelText('Connect from Public Application Load Balancer'),
+      screen.getByLabelText(
+        'Connect Public Application Load Balancer via right',
+      ),
     );
-    fireEvent.click(screen.getByLabelText('Connect into Orders Database'));
+    fireEvent.click(screen.getByLabelText('Connect Orders Database via left'));
 
     await waitFor(() =>
       expect(

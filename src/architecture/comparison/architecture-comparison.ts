@@ -101,7 +101,13 @@ function connectionChangedFields(
     'encrypted',
     'critical',
   ] as const;
-  return fields.filter((field) => !equal(before[field], after[field]));
+  return [
+    ...fields.filter((field) => !equal(before[field], after[field])),
+    ...(['sourcePort', 'targetPort'] as const).filter((field) => {
+      const fallback = field === 'sourcePort' ? 'right' : 'left';
+      return (before[field] ?? fallback) !== (after[field] ?? fallback);
+    }),
+  ];
 }
 
 function connectionLabel(

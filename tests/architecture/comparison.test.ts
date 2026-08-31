@@ -31,6 +31,19 @@ function getHumanCheckpoint() {
 }
 
 describe('deterministic architecture comparison', () => {
+  it('reports changed connection sides while keeping architecture scores unchanged', () => {
+    const baseline = getHumanCheckpoint();
+    const current = structuredClone(baseline);
+    current.connections[0].sourcePort = 'right';
+    current.connections[0].targetPort = 'left';
+    expect(compareArchitectures(baseline, current).changed).toEqual([]);
+    current.connections[0].sourcePort = 'bottom';
+    current.connections[0].targetPort = 'top';
+    const comparison = compareArchitectures(baseline, current);
+    expect(comparison.changed).toHaveLength(1);
+    expect(comparison.changed[0].fields).toEqual(['sourcePort', 'targetPort']);
+    expect(comparison.before).toEqual(comparison.after);
+  });
   it('does not invent score deltas to, from, or between empty architectures', () => {
     const empty = createEmptyArchitecture({ name: 'Empty architecture' });
     const populated = getHumanCheckpoint();

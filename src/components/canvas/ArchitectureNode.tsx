@@ -3,9 +3,17 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { CircleX, LockKeyhole, ShieldAlert, TriangleAlert } from 'lucide-react';
 
 import { getCatalogEntry } from '../../architecture/catalog';
+import { CONNECTION_PORTS } from '../../architecture/model';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
 import { getComponentVisual } from './component-visuals';
 import type { ArchitectureFlowNode } from './flow-types';
+
+const portPositions = {
+  left: Position.Left,
+  right: Position.Right,
+  top: Position.Top,
+  bottom: Position.Bottom,
+} as const;
 
 const stateClasses = {
   normal: 'border-slate-700/90 bg-[#101720] shadow-black/30',
@@ -87,15 +95,20 @@ export function ArchitectureNode({
         </div>
       ) : null}
 
-      {!attachmentOnlyKinds.has(component.kind) ? (
-        <Handle
-          type="target"
-          position={Position.Left}
-          isConnectable={isConnectable}
-          className="!size-2.5 !border-2 !border-[#090d13] !bg-slate-500 transition-colors group-hover:!bg-cyan-300"
-          aria-label={`Connect into ${component.name}`}
-        />
-      ) : null}
+      {!attachmentOnlyKinds.has(component.kind)
+        ? CONNECTION_PORTS.map((port) => (
+            <Handle
+              key={port}
+              id={port}
+              type="source"
+              position={portPositions[port]}
+              isConnectable={isConnectable}
+              className="!size-2.5 !border-2 !border-[#090d13] !bg-slate-500 transition-colors group-hover:!bg-cyan-300"
+              aria-label={`Connect ${component.name} via ${port}`}
+              title={`${port[0].toUpperCase()}${port.slice(1)} connection point — drag to another component`}
+            />
+          ))
+        : null}
 
       <div className="flex min-h-[58px] items-start gap-2.5 px-3 pb-2 pt-3">
         <div
@@ -167,16 +180,6 @@ export function ArchitectureNode({
             : component.region}
         </span>
       </div>
-
-      {!attachmentOnlyKinds.has(component.kind) ? (
-        <Handle
-          type="source"
-          position={Position.Right}
-          isConnectable={isConnectable}
-          className="!size-2.5 !border-2 !border-[#090d13] !bg-slate-500 transition-colors group-hover:!bg-cyan-300"
-          aria-label={`Connect from ${component.name}`}
-        />
-      ) : null}
     </article>
   );
 }

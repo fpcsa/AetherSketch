@@ -112,6 +112,8 @@ function connectionSummary(connection: ArchitectureConnection) {
     id: connection.id,
     sourceComponentId: connection.source,
     targetComponentId: connection.target,
+    sourcePort: connection.sourcePort ?? 'right',
+    targetPort: connection.targetPort ?? 'left',
     type: connection.type,
     protocol: connection.protocol,
     encrypted: connection.encrypted,

@@ -22,6 +22,9 @@ export const CONNECTION_TYPES = [
 
 export type ConnectionType = (typeof CONNECTION_TYPES)[number];
 
+export const CONNECTION_PORTS = ['left', 'right', 'top', 'bottom'] as const;
+export type ConnectionPort = (typeof CONNECTION_PORTS)[number];
+
 export type Actor = 'human' | 'agent' | 'system';
 
 export type NetworkRoute = {
@@ -208,6 +211,9 @@ export type ArchitectureConnection = {
   id: string;
   source: string;
   target: string;
+  /** Visual anchors only. Omitted ports preserve legacy right-to-left layout. */
+  sourcePort?: ConnectionPort;
+  targetPort?: ConnectionPort;
   type: ConnectionType;
   protocol?: string;
   encrypted: boolean;
@@ -330,6 +336,8 @@ export type ConnectComponentsInput = {
   id?: string;
   source: string;
   target: string;
+  sourcePort?: ConnectionPort;
+  targetPort?: ConnectionPort;
   type: ConnectionType;
   protocol?: string;
   encrypted?: boolean;
@@ -338,6 +346,8 @@ export type ConnectComponentsInput = {
 };
 
 export type ConnectionUpdate = {
+  sourcePort?: ConnectionPort;
+  targetPort?: ConnectionPort;
   type?: ConnectionType;
   protocol?: string;
   encrypted?: boolean;

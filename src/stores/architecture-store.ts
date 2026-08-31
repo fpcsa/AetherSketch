@@ -567,6 +567,8 @@ export function createArchitectureStore(
             requireAgentFields(actor, input, [
               'source',
               'target',
+              'sourcePort',
+              'targetPort',
               'type',
               'protocol',
               'encrypted',
@@ -618,6 +620,8 @@ export function createArchitectureStore(
                   id: connectionId,
                   source: input.source,
                   target: input.target,
+                  sourcePort: input.sourcePort,
+                  targetPort: input.targetPort,
                   type: input.type,
                   protocol: input.protocol,
                   encrypted: input.encrypted ?? true,
