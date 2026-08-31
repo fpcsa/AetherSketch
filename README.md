@@ -1,5 +1,7 @@
 # AetherSketch — Architecture Copilot
 
+![aethersketch_homepage.png](aethersketch_homepage.png)
+
 **The architecture canvas built for humans and agents.**
 
 AetherSketch gives a human and a browser agent one shared cloud architecture to inspect, improve, and challenge. The human supplies intent and authority; the agent uses typed WebMCP tools; the canvas shows every accepted change and its modeled consequences.
