@@ -4,8 +4,10 @@ import {
   subnetKinds,
 } from '../../architecture/network/structure';
 import { Focus, LockKeyhole, Trash2, UnlockKeyhole } from 'lucide-react';
+import type { z } from 'zod';
 
 import { getCatalogEntry } from '../../architecture/catalog';
+import { componentSchemas } from '../../architecture/model';
 import type {
   ArchitectureComponent,
   ComponentKind,
@@ -15,6 +17,10 @@ import type {
 import { useArchitectureStore } from '../../stores/architecture-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
 import { runWorkspaceAction } from '../layout/workspace-actions';
+import { NumericField } from './NumericField';
+
+const privateAsnHint =
+  'Enter a whole number from 64512–65534 or 4200000000–4294967294.';
 
 const configurationOptions: Partial<
   Record<ComponentKind, Record<string, readonly string[]>>
@@ -94,6 +100,11 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
     (state) => state.catalogDescriptionMode,
   );
   const catalog = getCatalogEntry(component.kind);
+  const componentSchema = componentSchemas.find(
+    (schema) => schema.shape.kind.value === component.kind,
+  )!;
+  const configurationSchemas: Record<string, z.ZodType> =
+    componentSchema.shape.configuration.shape;
 
   const commit = (changes: ComponentUpdate) => {
     try {
@@ -209,23 +220,16 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
         </label>
 
         {catalog.supportedProperties.includes('replicas') ? (
-          <label className="block text-[11px] font-medium uppercase tracking-[0.1em] text-slate-600">
-            Replicas
-            <input
-              key={`${component.id}:replicas:${component.replicas}`}
-              className={inputClass}
-              type="number"
-              min={1}
-              max={10_000}
-              defaultValue={component.replicas}
-              onBlur={(event) => {
-                const value = Number(event.currentTarget.value);
-                if (Number.isInteger(value) && value !== component.replicas) {
-                  commit({ replicas: value });
-                }
-              }}
-            />
-          </label>
+          <NumericField
+            key={`${component.id}:replicas:${component.replicas}`}
+            label="Replicas"
+            inputClassName={inputClass}
+            schema={componentSchema.shape.replicas}
+            min={1}
+            max={10_000}
+            value={component.replicas}
+            onCommit={(replicas) => updateComponent(component.id, { replicas })}
+          />
         ) : null}
 
         {subnetKinds.has(component.kind) ||
@@ -254,9 +258,8 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
             ) : null}
             {component.kind === 'virtual-private-gateway' ? (
               <p className="text-[12px] leading-5 text-slate-500">
-                Private ASN: 64512–65534 or 4200000000–4294967294. VPN
-                connections are modeled separately; dedicated links and transfer
-                charges are excluded.
+                Private ASN: {privateAsnHint} VPN connections are modeled
+                separately; dedicated links and transfer charges are excluded.
               </p>
             ) : null}
             {Object.entries(component.configuration).map(([key, value]) => {
@@ -317,6 +320,24 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
                 );
               }
 
+              if (typeof value === 'number') {
+                return (
+                  <NumericField
+                    key={`${component.id}:${key}:${value}`}
+                    label={label}
+                    inputClassName={inputClass}
+                    schema={configurationSchemas[key]}
+                    validationHint={key === 'asn' ? privateAsnHint : undefined}
+                    value={value}
+                    onCommit={(nextValue) =>
+                      updateComponent(component.id, {
+                        configuration: { [key]: nextValue },
+                      })
+                    }
+                  />
+                );
+              }
+
               return (
                 <label
                   key={key}
@@ -326,18 +347,11 @@ export function ComponentInspector({ component }: ComponentInspectorProps) {
                   <input
                     key={`${component.id}:${key}:${String(value)}`}
                     className={inputClass}
-                    type={typeof value === 'number' ? 'number' : 'text'}
+                    type="text"
                     defaultValue={String(value)}
                     onBlur={(event) => {
-                      const nextValue =
-                        typeof value === 'number'
-                          ? Number(event.currentTarget.value)
-                          : event.currentTarget.value.trim();
-                      if (
-                        (typeof nextValue !== 'number' ||
-                          Number.isFinite(nextValue)) &&
-                        nextValue !== value
-                      ) {
+                      const nextValue = event.currentTarget.value.trim();
+                      if (nextValue !== value) {
                         commitConfiguration(key, nextValue);
                       }
                     }}

@@ -1,5 +1,6 @@
 import { Check, Minus, Play, RotateCw, X } from 'lucide-react';
 
+import { architectureConstraintsSchema } from '../../architecture';
 import type {
   ArchitectureConstraints,
   ConstraintResult,
@@ -8,6 +9,7 @@ import { useArchitectureStore } from '../../stores/architecture-store';
 import { useIntelligenceStore } from '../../stores/intelligence-store';
 import { useWorkspaceUiStore } from '../../stores/workspace-ui-store';
 import { runWorkspaceAction } from '../layout/workspace-actions';
+import { NumericField } from './NumericField';
 
 const inputClass =
   'mt-1 h-8 w-full border border-slate-700 bg-[#0a0f16] px-2 text-[12px] text-slate-200 outline-none placeholder:text-slate-700 focus:border-cyan-400/70';
@@ -43,34 +45,24 @@ export function ConstraintsPanel() {
     }
   };
 
-  const commitNumber = (
-    key: 'maximumMonthlyCost' | 'targetResilienceScore' | 'targetSecurityScore',
-    value: string,
-  ) => {
-    const parsed = value.trim() === '' ? undefined : Number(value);
-    if (parsed === undefined || Number.isFinite(parsed)) {
-      commitConstraints({ [key]: parsed });
-    }
-  };
-
   return (
     <div className="space-y-3 px-3 py-3">
-      <div className="grid grid-cols-2 gap-2">
-        <label className="flex flex-col justify-end text-[10px] font-medium uppercase tracking-[0.1em] text-slate-600">
-          Maximum monthly cost
-          <input
-            key={`budget:${constraints.maximumMonthlyCost ?? ''}`}
-            className={inputClass}
-            type="number"
-            min={0}
-            placeholder="No limit"
-            defaultValue={constraints.maximumMonthlyCost}
-            onBlur={(event) =>
-              commitNumber('maximumMonthlyCost', event.currentTarget.value)
-            }
-          />
-        </label>
-        <label className="flex flex-col justify-end text-[10px] font-medium uppercase tracking-[0.1em] text-slate-600">
+      <div className="grid grid-cols-2 gap-x-2">
+        <NumericField
+          key={`budget:${constraints.maximumMonthlyCost ?? ''}`}
+          label="Maximum monthly cost"
+          className="row-span-3 grid grid-rows-subgrid pb-2 text-[10px] font-medium uppercase tracking-[0.1em] text-slate-600"
+          inputClassName={inputClass}
+          schema={architectureConstraintsSchema.shape.maximumMonthlyCost}
+          min={0}
+          placeholder="No limit"
+          optional
+          value={constraints.maximumMonthlyCost}
+          onCommit={(maximumMonthlyCost) =>
+            setConstraints({ maximumMonthlyCost })
+          }
+        />
+        <label className="row-span-3 grid grid-rows-subgrid pb-2 text-[10px] font-medium uppercase tracking-[0.1em] text-slate-600">
           Required region
           <input
             key={`region:${constraints.requiredRegion ?? ''}`}
@@ -84,36 +76,36 @@ export function ConstraintsPanel() {
             }
           />
         </label>
-        <label className="flex flex-col justify-end text-[10px] font-medium uppercase tracking-[0.1em] text-slate-600">
-          Target resilience
-          <input
-            key={`resilience:${constraints.targetResilienceScore ?? ''}`}
-            className={inputClass}
-            type="number"
-            min={0}
-            max={100}
-            placeholder="0–100"
-            defaultValue={constraints.targetResilienceScore}
-            onBlur={(event) =>
-              commitNumber('targetResilienceScore', event.currentTarget.value)
-            }
-          />
-        </label>
-        <label className="flex flex-col justify-end text-[10px] font-medium uppercase tracking-[0.1em] text-slate-600">
-          Target security
-          <input
-            key={`security:${constraints.targetSecurityScore ?? ''}`}
-            className={inputClass}
-            type="number"
-            min={0}
-            max={100}
-            placeholder="0–100"
-            defaultValue={constraints.targetSecurityScore}
-            onBlur={(event) =>
-              commitNumber('targetSecurityScore', event.currentTarget.value)
-            }
-          />
-        </label>
+        <NumericField
+          key={`resilience:${constraints.targetResilienceScore ?? ''}`}
+          label="Target resilience"
+          className="row-span-3 grid grid-rows-subgrid pb-2 text-[10px] font-medium uppercase tracking-[0.1em] text-slate-600"
+          inputClassName={inputClass}
+          schema={architectureConstraintsSchema.shape.targetResilienceScore}
+          min={0}
+          max={100}
+          placeholder="0–100"
+          optional
+          value={constraints.targetResilienceScore}
+          onCommit={(targetResilienceScore) =>
+            setConstraints({ targetResilienceScore })
+          }
+        />
+        <NumericField
+          key={`security:${constraints.targetSecurityScore ?? ''}`}
+          label="Target security"
+          className="row-span-3 grid grid-rows-subgrid pb-2 text-[10px] font-medium uppercase tracking-[0.1em] text-slate-600"
+          inputClassName={inputClass}
+          schema={architectureConstraintsSchema.shape.targetSecurityScore}
+          min={0}
+          max={100}
+          placeholder="0–100"
+          optional
+          value={constraints.targetSecurityScore}
+          onCommit={(targetSecurityScore) =>
+            setConstraints({ targetSecurityScore })
+          }
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-2">
