@@ -649,6 +649,52 @@ describe('human architecture workspace', () => {
     expect(screen.getAllByText('not-met').length).toBeGreaterThan(0);
   });
 
+  it.each([
+    ['Maximum monthly cost', '-1'],
+    ['Target resilience', '101'],
+    ['Target security', '101'],
+  ])(
+    'clears the %s error when switching templates with the same saved value',
+    (label, invalidValue) => {
+      render(<App />);
+      const template = screen.getByRole('combobox', {
+        name: 'Architecture template',
+      });
+      fireEvent.change(template, { target: { value: 'serverless-api' } });
+
+      const input = screen.getByRole('spinbutton', { name: label });
+      expect(input).toHaveValue(null);
+      fireEvent.change(input, { target: { value: invalidValue } });
+      fireEvent.blur(input);
+      expect(input).toHaveAttribute('aria-invalid', 'true');
+      expect(input).toHaveAccessibleDescription(/No value saved\./);
+
+      // Editing another constraint must not dismiss this field's feedback.
+      fireEvent.click(
+        screen.getByRole('checkbox', { name: 'Require Multi-AZ' }),
+      );
+      expect(input).toHaveAttribute('aria-invalid', 'true');
+
+      fireEvent.change(template, { target: { value: 'event-processing' } });
+      const expectFreshField = () => {
+        const nextInput = screen.getByRole('spinbutton', { name: label });
+        expect(nextInput).toHaveValue(null);
+        expect(nextInput).not.toHaveAttribute('aria-invalid');
+        expect(nextInput).not.toHaveAttribute('aria-describedby');
+        expect(screen.queryByText(/No value saved\./)).not.toBeInTheDocument();
+      };
+      expectFreshField();
+      expect(useArchitectureStore.getState().architecture.revision).toBe(0);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+      expect(template).toHaveValue('serverless-api');
+      expectFreshField();
+      fireEvent.click(screen.getByRole('button', { name: 'Redo' }));
+      expect(template).toHaveValue('event-processing');
+      expectFreshField();
+    },
+  );
+
   it('shows interactive analysis findings and focuses affected nodes', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'Analyze' }));

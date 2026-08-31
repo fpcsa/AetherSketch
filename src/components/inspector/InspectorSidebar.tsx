@@ -140,7 +140,7 @@ export function InspectorSidebar() {
               </h2>
             </div>
             <div className="min-h-0 flex-1 overflow-auto">
-              <ConstraintsPanel />
+              <ConstraintsPanel key={architecture.id} />
             </div>
           </section>
         </div>
